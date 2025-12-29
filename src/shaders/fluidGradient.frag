@@ -1,0 +1,168 @@
+precision highp float;
+
+varying vec2 vUv;
+
+uniform float uTime;
+uniform vec2 uMouse;
+uniform vec2 uResolution;
+
+#define PI 3.14159265359
+
+// ========== Simplex Noise ==========
+vec3 mod289(vec3 x) { return x - floor(x * (1.0 / 289.0)) * 289.0; }
+vec2 mod289(vec2 x) { return x - floor(x * (1.0 / 289.0)) * 289.0; }
+vec3 permute(vec3 x) { return mod289(((x*34.0)+1.0)*x); }
+
+float snoise(vec2 v) {
+  const vec4 C = vec4(0.211324865405187, 0.366025403784439,
+           -0.577350269189626, 0.024390243902439);
+  vec2 i  = floor(v + dot(v, C.yy));
+  vec2 x0 = v - i + dot(i, C.xx);
+  vec2 i1;
+  i1 = (x0.x > x0.y) ? vec2(1.0, 0.0) : vec2(0.0, 1.0);
+  vec4 x12 = x0.xyxy + C.xxzz;
+  x12.xy -= i1;
+  i = mod289(i);
+  vec3 p = permute(permute(i.y + vec3(0.0, i1.y, 1.0))
+    + i.x + vec3(0.0, i1.x, 1.0));
+  vec3 m = max(0.5 - vec3(dot(x0,x0), dot(x12.xy,x12.xy),
+    dot(x12.zw,x12.zw)), 0.0);
+  m = m*m;
+  m = m*m;
+  vec3 x = 2.0 * fract(p * C.www) - 1.0;
+  vec3 h = abs(x) - 0.5;
+  vec3 ox = floor(x + 0.5);
+  vec3 a0 = x - ox;
+  m *= 1.79284291400159 - 0.85373472095314 * (a0*a0 + h*h);
+  vec3 g;
+  g.x = a0.x * x0.x + h.x * x0.y;
+  g.yz = a0.yz * x12.xz + h.yz * x12.yw;
+  return 130.0 * dot(m, g);
+}
+
+// FBM (Fractal Brownian Motion) - optimized with fewer octaves
+float fbm(vec2 p, int octaves) {
+  float value = 0.0;
+  float amplitude = 0.5;
+  float frequency = 1.0;
+  for (int i = 0; i < 4; i++) {
+    if (i >= octaves) break;
+    value += amplitude * snoise(p * frequency);
+    frequency *= 2.0;
+    amplitude *= 0.5;
+  }
+  return value;
+}
+
+// ========== HSL to RGB ==========
+vec3 hsl2rgb(float h, float s, float l) {
+  vec3 rgb = clamp(abs(mod(h * 6.0 + vec3(0.0, 4.0, 2.0), 6.0) - 3.0) - 1.0, 0.0, 1.0);
+  return l + s * (rgb - 0.5) * (1.0 - abs(2.0 * l - 1.0));
+}
+
+// ========== Main ==========
+void main() {
+  vec2 uv = vUv;
+  vec2 aspect = vec2(uResolution.x / uResolution.y, 1.0);
+  vec2 uvAspect = (uv - 0.5) * aspect;
+  
+  float time = uTime * 0.15;
+  
+  // ============ LIQUID DISTORTION ============
+  // Create flowing liquid distortion (optimized: reduced octaves)
+  vec2 flowOffset = vec2(
+    fbm(uvAspect * 1.5 + time * 0.3 + vec2(0.0, 100.0), 3),
+    fbm(uvAspect * 1.5 + time * 0.25 + vec2(100.0, 0.0), 3)
+  ) * 0.35;
+  
+  vec2 distortedUv = uvAspect + flowOffset;
+  
+  // Mouse interaction - creates ripples
+  vec2 mouseUv = (uMouse - 0.5) * aspect;
+  float mouseDist = length(uvAspect - mouseUv);
+  float mouseInfluence = exp(-mouseDist * 4.0) * 0.15;
+  distortedUv += normalize(uvAspect - mouseUv + 0.001) * mouseInfluence * sin(time * 3.0 + mouseDist * 10.0);
+  
+  // ============ RAINBOW GRADIENT ============
+  // Base hue from position with liquid distortion
+  float baseHue = atan(distortedUv.y, distortedUv.x) / (2.0 * PI) + 0.5;
+  
+  // Add flowing color variation (optimized)
+  float hueShift1 = fbm(distortedUv * 1.2 + time * 0.2, 2) * 0.3;
+  float hueShift2 = snoise(distortedUv * 2.0 - time * 0.15) * 0.2;
+  
+  float hue = fract(baseHue + hueShift1 + hueShift2 + time * 0.05);
+  
+  // Saturation and lightness variation for depth (optimized)
+  float satNoise = snoise(distortedUv * 1.5 + time * 0.1);
+  float saturation = 0.5 + satNoise * 0.2; // 0.3 to 0.7 - soft saturation
+  
+  float lightNoise = snoise(distortedUv * 1.5 - time * 0.12);
+  float lightness = 0.65 + lightNoise * 0.15; // 0.5 to 0.8 - keep it pastel/bright
+  
+  vec3 rainbowColor = hsl2rgb(hue, saturation, lightness);
+  
+  // ============ LIQUID FLOW PATTERN ============
+  // Create organic blob/flow pattern (optimized: fewer noise calls)
+  float flow1 = snoise(distortedUv * 2.0 + time * 0.2) * 0.5 + 0.5;
+  float flow2 = snoise(distortedUv * 1.5 - time * 0.15 + 50.0) * 0.5 + 0.5;
+  
+  float liquidPattern = flow1 * flow2;
+  liquidPattern = smoothstep(0.15, 0.55, liquidPattern);
+  
+  // ============ IRIDESCENT PEARL EFFECT ============
+  float iridescence = snoise(distortedUv * 6.0 + time * 0.25) * 0.6;
+  
+  // Pearl shimmer shifts the hue slightly
+  float pearlHue = fract(hue + iridescence * 0.1);
+  vec3 pearlColor = hsl2rgb(pearlHue, saturation * 0.3, 0.95);
+  
+  // Pearl highlight intensity (simplified)
+  float pearlIntensity = pow(abs(snoise(distortedUv * 3.0 + time * 0.2)), 1.5) * 0.5;
+  
+  // ============ SPECULAR HIGHLIGHTS ============
+  // Create bright specular spots (simplified)
+  float specular = snoise(distortedUv * 4.0 + time * 0.35);
+  specular = max(0.0, specular * specular);
+  specular = pow(specular, 3.0) * 1.5;
+  
+  // ============ SHAPE MASK (Blob) ============
+  float dist = length(uvAspect);
+  
+  // Organic edge distortion (simplified)
+  float angle = atan(uvAspect.y, uvAspect.x);
+  float edgeNoise = snoise(vec2(angle * 2.0 + time * 0.2, dist * 1.5)) * 0.06;
+  float wave1 = sin(angle * 4.0 + time * 0.5) * 0.03;
+  float wave2 = sin(angle * 6.0 - time * 0.4) * 0.02;
+  
+  float blobRadius = 0.4 + edgeNoise + wave1 + wave2;
+  float blob = 1.0 - smoothstep(blobRadius - 0.1, blobRadius + 0.02, dist);
+  
+  // ============ COMPOSE ==========
+  vec3 finalColor = rainbowColor;
+  
+  // Mix in liquid flow variation
+  finalColor = mix(finalColor, rainbowColor * 1.2, liquidPattern * 0.3);
+  
+  // Add pearl iridescence
+  finalColor = mix(finalColor, pearlColor, pearlIntensity);
+  
+  // Add specular highlights
+  finalColor += vec3(1.0, 0.98, 0.95) * specular;
+  
+  // Add subtle edge glow
+  float edgeGlow = smoothstep(blobRadius, blobRadius - 0.15, dist);
+  finalColor += rainbowColor * 0.2 * (1.0 - edgeGlow) * blob;
+  
+  // ============ BACKGROUND ============
+  vec3 bgColor = vec3(0.97, 0.96, 0.95);
+  
+  // Apply blob mask
+  finalColor = mix(bgColor, finalColor, blob);
+  
+  // Subtle vignette
+  float vignette = 1.0 - dot(uvAspect * 0.8, uvAspect * 0.8);
+  finalColor *= 0.9 + vignette * 0.1;
+  
+  gl_FragColor = vec4(clamp(finalColor, 0.0, 1.0), 1.0);
+}

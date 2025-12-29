@@ -1,8 +1,11 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: #050a15;
+  --foreground: #ffffff;
+  --accent-cyan: #4a8fc7;
+  --accent-purple: #7a5aad;
+  --accent-pink: #c75a8a;
 }
 
 @theme inline {
@@ -12,15 +15,80 @@
   --font-mono: var(--font-geist-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+* {
+  cursor: none;
+}
+
+html {
+  scroll-behavior: auto; /* Lenis 會處理 */
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  overflow-x: hidden;
+}
+
+/* 隱藏原生滾動條 */
+::-webkit-scrollbar {
+  width: 0px;
+  background: transparent;
+}
+
+/* 選取文字樣式 */
+::selection {
+  background: rgba(74, 143, 199, 0.3);
+  color: white;
+}
+
+/* 文字動畫樣式 */
+.char {
+  display: inline-block;
+  will-change: transform, opacity;
+}
+
+.word {
+  display: inline-block;
+  white-space: nowrap;
+}
+
+/* 漸層文字 */
+.gradient-text {
+  background: linear-gradient(135deg, var(--accent-cyan), var(--accent-purple), var(--accent-pink));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* 光暈效果 */
+.glow {
+  box-shadow: 0 0 40px rgba(74, 143, 199, 0.3);
+}
+
+/* 滾動動畫 keyframes */
+@keyframes float {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-10px);
+  }
+}
+
+@keyframes pulse-glow {
+  0%, 100% {
+    box-shadow: 0 0 20px rgba(74, 143, 199, 0.2);
+  }
+  50% {
+    box-shadow: 0 0 40px rgba(74, 143, 199, 0.4);
+  }
+}
+
+.animate-float {
+  animation: float 3s ease-in-out infinite;
+}
+
+.animate-pulse-glow {
+  animation: pulse-glow 2s ease-in-out infinite;
 }

@@ -11,9 +11,10 @@ interface SceneProps {
 export default function Scene({ children }: SceneProps) {
   return (
     <Canvas
-      camera={{ position: [0, 0, 5], fov: 45 }}
+      camera={{ position: [0, 0, 1], fov: 45 }}
       style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh' }}
-      gl={{ antialias: true, alpha: true }}
+      gl={{ antialias: true, alpha: false, powerPreference: 'high-performance' }}
+      dpr={[1, 2]}
     >
       <Suspense fallback={null}>
         {children}

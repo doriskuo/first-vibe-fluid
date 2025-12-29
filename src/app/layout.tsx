@@ -15,6 +15,9 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "LIQUID.LAB | Experimental Fluid",
   description: "A dynamic liquid rainbow iridescent experience.",
+  icons: {
+    icon: "/favicon.png",
+  },
 };
 
 export default function RootLayout({

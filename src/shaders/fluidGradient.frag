@@ -69,7 +69,7 @@ void main() {
   float time = uTime * 0.15;
   
   // ============ LIQUID DISTORTION ============
-  // Create flowing liquid distortion (optimized: reduced octaves)
+  // Linear falling motion
   vec2 flowOffset = vec2(
     fbm(uvAspect * 1.5 + time * 0.3 + vec2(0.0, 100.0), 3),
     fbm(uvAspect * 1.5 + time * 0.25 + vec2(100.0, 0.0), 3)
@@ -77,61 +77,58 @@ void main() {
   
   vec2 distortedUv = uvAspect + flowOffset;
   
-  // Mouse interaction - creates ripples
+  // Mouse interaction - ripples
   vec2 mouseUv = (uMouse - 0.5) * aspect;
   float mouseDist = length(uvAspect - mouseUv);
   float mouseInfluence = exp(-mouseDist * 4.0) * 0.15;
   distortedUv += normalize(uvAspect - mouseUv + 0.001) * mouseInfluence * sin(time * 3.0 + mouseDist * 10.0);
   
-  // ============ RAINBOW GRADIENT ============
-  // Base hue from position with liquid distortion
-  float baseHue = atan(distortedUv.y, distortedUv.x) / (2.0 * PI) + 0.5;
+  // ============ RAINBOW GRADIENT (Seamless Fix) ============
+  float angle1 = atan(distortedUv.y, distortedUv.x);
+  float angle2 = atan(distortedUv.y, -distortedUv.x);
   
-  // Add flowing color variation (optimized)
+  float h1 = angle1 / (2.0 * PI) + 0.5;
+  float h2 = fract(angle2 / (2.0 * PI) + 1.0);
+  
   float hueShift1 = fbm(distortedUv * 1.2 + time * 0.2, 2) * 0.3;
   float hueShift2 = snoise(distortedUv * 2.0 - time * 0.15) * 0.2;
   
-  float hue = fract(baseHue + hueShift1 + hueShift2 + time * 0.05);
-  
-  // Saturation and lightness variation for depth (optimized)
   float satNoise = snoise(distortedUv * 1.5 + time * 0.1);
-  float saturation = 0.5 + satNoise * 0.2; // 0.3 to 0.7 - soft saturation
-  
+  float saturation = 0.5 + satNoise * 0.2; 
   float lightNoise = snoise(distortedUv * 1.5 - time * 0.12);
-  float lightness = 0.65 + lightNoise * 0.15; // 0.5 to 0.8 - keep it pastel/bright
+  float lightness = 0.65 + lightNoise * 0.15; 
   
-  vec3 rainbowColor = hsl2rgb(hue, saturation, lightness);
+  vec3 c1 = hsl2rgb(fract(h1 + hueShift1 + hueShift2 + time * 0.05), saturation, lightness);
+  vec3 c2 = hsl2rgb(fract(h2 + hueShift1 + hueShift2 + time * 0.05), saturation, lightness);
+  
+  float blend = smoothstep(0.85, 1.0, abs(angle1) / PI);
+  vec3 rainbowColor = mix(c1, c2, blend);
   
   // ============ LIQUID FLOW PATTERN ============
-  // Create organic blob/flow pattern (optimized: fewer noise calls)
   float flow1 = snoise(distortedUv * 2.0 + time * 0.2) * 0.5 + 0.5;
   float flow2 = snoise(distortedUv * 1.5 - time * 0.15 + 50.0) * 0.5 + 0.5;
-  
-  float liquidPattern = flow1 * flow2;
-  liquidPattern = smoothstep(0.15, 0.55, liquidPattern);
+  float liquidPattern = smoothstep(0.15, 0.55, flow1 * flow2);
   
   // ============ IRIDESCENT PEARL EFFECT ============
   float iridescence = snoise(distortedUv * 6.0 + time * 0.25) * 0.6;
-  
-  // Pearl shimmer shifts the hue slightly
-  float pearlHue = fract(hue + iridescence * 0.1);
-  vec3 pearlColor = hsl2rgb(pearlHue, saturation * 0.3, 0.95);
-  
-  // Pearl highlight intensity (simplified)
+  vec3 pearlColor = mix(
+    hsl2rgb(fract(h1 + iridescence * 0.1), saturation * 0.3, 0.95),
+    hsl2rgb(fract(h2 + iridescence * 0.1), saturation * 0.3, 0.95),
+    blend
+  );
   float pearlIntensity = pow(abs(snoise(distortedUv * 3.0 + time * 0.2)), 1.5) * 0.5;
   
   // ============ SPECULAR HIGHLIGHTS ============
-  // Create bright specular spots (simplified)
   float specular = snoise(distortedUv * 4.0 + time * 0.35);
-  specular = max(0.0, specular * specular);
-  specular = pow(specular, 3.0) * 1.5;
+  specular = pow(max(0.0, specular * specular), 3.0) * 1.5;
   
   // ============ SHAPE MASK (Blob) ============
   float dist = length(uvAspect);
-  
-  // Organic edge distortion (simplified)
   float angle = atan(uvAspect.y, uvAspect.x);
-  float edgeNoise = snoise(vec2(angle * 2.0 + time * 0.2, dist * 1.5)) * 0.06;
+  
+  // SEAMLESS Noise coordinates for edges
+  vec2 seamlessCoord = vec2(cos(angle), sin(angle));
+  float edgeNoise = snoise(seamlessCoord * 1.2 + time * 0.15) * 0.08;
   float wave1 = sin(angle * 4.0 + time * 0.5) * 0.03;
   float wave2 = sin(angle * 6.0 - time * 0.4) * 0.02;
   
@@ -140,27 +137,17 @@ void main() {
   
   // ============ COMPOSE ==========
   vec3 finalColor = rainbowColor;
-  
-  // Mix in liquid flow variation
   finalColor = mix(finalColor, rainbowColor * 1.2, liquidPattern * 0.3);
-  
-  // Add pearl iridescence
   finalColor = mix(finalColor, pearlColor, pearlIntensity);
-  
-  // Add specular highlights
   finalColor += vec3(1.0, 0.98, 0.95) * specular;
   
-  // Add subtle edge glow
   float edgeGlow = smoothstep(blobRadius, blobRadius - 0.15, dist);
   finalColor += rainbowColor * 0.2 * (1.0 - edgeGlow) * blob;
   
   // ============ BACKGROUND ============
   vec3 bgColor = vec3(0.97, 0.96, 0.95);
-  
-  // Apply blob mask
   finalColor = mix(bgColor, finalColor, blob);
   
-  // Subtle vignette
   float vignette = 1.0 - dot(uvAspect * 0.8, uvAspect * 0.8);
   finalColor *= 0.9 + vignette * 0.1;
   

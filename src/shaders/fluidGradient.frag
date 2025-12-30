@@ -68,13 +68,20 @@ void main() {
   
   float time = uTime * 0.15;
   
-  // ============ LIQUID DISTORTION ============
-  // Linear falling motion
-  vec2 flowOffset = vec2(
-    fbm(uvAspect * 1.5 + time * 0.3 + vec2(0.0, 100.0), 3),
-    fbm(uvAspect * 1.5 + time * 0.25 + vec2(100.0, 0.0), 3)
-  ) * 0.35;
+  // ============ TURBULENT LIQUID FLOW (Directionless) ============
+  // Replacing linear falling with multi-directional turbulence
+  // Layer 1: Base slow turbulence
+  vec2 turb1 = vec2(
+    snoise(uvAspect * 1.2 + time * 0.2),
+    snoise(uvAspect * 1.3 - time * 0.15 + 10.0)
+  );
+  // Layer 2: Faster detail turbulence
+  vec2 turb2 = vec2(
+    fbm(uvAspect * 2.5 - time * 0.35, 2),
+    fbm(uvAspect * 2.2 + time * 0.3 + 20.0, 2)
+  );
   
+  vec2 flowOffset = (turb1 * 0.4 + turb2 * 0.2) * 0.5;
   vec2 distortedUv = uvAspect + flowOffset;
   
   // Mouse interaction - ripples
@@ -122,17 +129,25 @@ void main() {
   float specular = snoise(distortedUv * 4.0 + time * 0.35);
   specular = pow(max(0.0, specular * specular), 3.0) * 1.5;
   
-  // ============ SHAPE MASK (Blob) ============
+  // ============ SHAPE MASK (Blob with Morphing Edges) ============
   float dist = length(uvAspect);
   float angle = atan(uvAspect.y, uvAspect.x);
   
-  // SEAMLESS Noise coordinates for edges
-  vec2 seamlessCoord = vec2(cos(angle), sin(angle));
-  float edgeNoise = snoise(seamlessCoord * 1.2 + time * 0.15) * 0.08;
-  float wave1 = sin(angle * 4.0 + time * 0.5) * 0.03;
-  float wave2 = sin(angle * 6.0 - time * 0.4) * 0.02;
+  // SEAMLESS Circular mapping for edge noise
+  vec2 seamCoord = vec2(cos(angle), sin(angle));
   
-  float blobRadius = 0.4 + edgeNoise + wave1 + wave2;
+  // MORPHING logic: Use time in the offset of the coordinates to shift the noise "flavor"
+  float shapeMorph = snoise(seamCoord * 0.8 + time * 0.1) * 0.05;
+  float detailMorph = snoise(seamCoord * 2.5 - time * 0.2) * 0.04;
+  
+  // Dynamic waves
+  float wave1 = sin(angle * 4.0 + time * 0.5 + shapeMorph * 10.0) * 0.03;
+  float wave2 = sin(angle * 6.0 - time * 0.4 + detailMorph * 5.0) * 0.02;
+  
+  float blobRadius = 0.4 + shapeMorph + detailMorph + wave1 + wave2;
+  // Limit radius variations to keep size relatively stable
+  blobRadius = clamp(blobRadius, 0.3, 0.55);
+  
   float blob = 1.0 - smoothstep(blobRadius - 0.1, blobRadius + 0.02, dist);
   
   // ============ COMPOSE ==========

@@ -14,12 +14,14 @@ const FluidBackground = dynamic(() => import('@/components/canvas/FluidBackgroun
 export default function Home() {
   return (
     <>
-      {/* 全螢幕 3D 流體背景 */}
-      <div className="fixed inset-0 w-screen h-screen">
+      <div className="fixed inset-0 w-screen h-screen z-0">
         <Scene>
           <FluidBackground />
         </Scene>
       </div>
+
+      {/* Scrollable Area */}
+      <div className="relative w-full h-[300vh] pointer-events-none" />
     </>
   )
 }

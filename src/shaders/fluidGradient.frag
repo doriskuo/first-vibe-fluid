@@ -5,6 +5,7 @@ varying vec2 vUv;
 uniform float uTime;
 uniform vec2 uMouse;
 uniform vec2 uResolution;
+uniform float uScrollProgress;
 
 #define PI 3.14159265359
 
@@ -58,6 +59,27 @@ float fbm(vec2 p, int octaves) {
 vec3 hsl2rgb(float h, float s, float l) {
   vec3 rgb = clamp(abs(mod(h * 6.0 + vec3(0.0, 4.0, 2.0), 6.0) - 3.0) - 1.0, 0.0, 1.0);
   return l + s * (rgb - 0.5) * (1.0 - abs(2.0 * l - 1.0));
+}
+
+// ========== SHAPE FUNCTIONS ==========
+// Simple SDF for a drop shape. 
+// Concept: Standard circle distance, but we distort the domain first.
+float sdDrop(vec2 p, float r) {
+    // Squeeze the top (positive Y) based on Y distance
+    // This makes the top pointy and bottom round
+    // Shift Y up slightly so the pivot is center-ish
+    p.y += r * 0.5; 
+    
+    // As we go up (pV.y > 0), we squeeze X.
+    // Factor can be tuned. 
+    // smoothstep(-r, r*1.5, p.y) creates a tapering factor from bottom to top
+    float taper = smoothstep(-r, r * 2.5, p.y);
+    float widthFactor = 1.0 - taper * 0.6; // Top becomes 40% width (approx)
+    
+    // Apply width factor to X
+    p.x /= max(0.2, widthFactor); // Avoid div by zero
+    
+    return length(p) - r;
 }
 
 // ========== Main ==========
@@ -129,26 +151,50 @@ void main() {
   float specular = snoise(distortedUv * 4.0 + time * 0.35);
   specular = pow(max(0.0, specular * specular), 3.0) * 1.5;
   
-  // ============ SHAPE MASK (Blob with Morphing Edges) ============
+  // ============ SHAPE MORPHING (Blob to Teardrop) ============
+  // Parameters controlled by scroll
+  float morphProgress = smoothstep(0.0, 1.0, uScrollProgress); // Non-linear easing
+  
+  // 1. Initial State: Noisy Blob
+  // Calculate polar coordinates for noise
   float dist = length(uvAspect);
   float angle = atan(uvAspect.y, uvAspect.x);
-  
-  // SEAMLESS Circular mapping for edge noise
   vec2 seamCoord = vec2(cos(angle), sin(angle));
   
-  // MORPHING logic: Use time in the offset of the coordinates to shift the noise "flavor"
   float shapeMorph = snoise(seamCoord * 0.8 + time * 0.1) * 0.05;
   float detailMorph = snoise(seamCoord * 2.5 - time * 0.2) * 0.04;
   
-  // Dynamic waves
-  float wave1 = sin(angle * 4.0 + time * 0.5 + shapeMorph * 10.0) * 0.03;
-  float wave2 = sin(angle * 6.0 - time * 0.4 + detailMorph * 5.0) * 0.02;
+  // Dynamic waves - reduce amplitude as we scroll to smooth out
+  float waveStrength = mix(1.0, 0.05, morphProgress);
+  float wave1 = sin(angle * 4.0 + time * 0.5 + shapeMorph * 10.0) * 0.03 * waveStrength;
+  float wave2 = sin(angle * 6.0 - time * 0.4 + detailMorph * 5.0) * 0.02 * waveStrength;
   
-  float blobRadius = 0.4 + shapeMorph + detailMorph + wave1 + wave2;
-  // Limit radius variations to keep size relatively stable
-  blobRadius = clamp(blobRadius, 0.3, 0.55);
+  // Dynamic Radius: Shrink from 0.45 to 0.12 (favicon size)
+  float baseRadius = mix(0.42, 0.12, morphProgress);
   
-  float blob = 1.0 - smoothstep(blobRadius - 0.1, blobRadius + 0.02, dist);
+  // Blob Radius calculation
+  float blobRadius = baseRadius + (shapeMorph + detailMorph) * waveStrength + wave1 + wave2;
+  // Clamp radius for stability, but tighten clamp as we shrink
+  blobRadius = clamp(blobRadius, baseRadius * 0.8, baseRadius * 1.2);
+  
+  // Distance field logic for Blob state
+  float blobDist = dist - blobRadius;
+  
+  // 2. Target State: Smooth Teardrop
+  // Calculate SDF for Teardrop, centered
+  vec2 dropUV = uvAspect;
+  // Shift drop down slightly as it forms to stay centered visually (point is high)
+  dropUV.y -= mix(0.0, 0.05, morphProgress); 
+  // Teardrop SDF
+  float dropSDF = sdDrop(dropUV, baseRadius); 
+  
+  // 3. Mix Shapes
+  // We use the scroll progress to blend between the "Blob Distance" and "Teardrop Distance"
+  float finalSDF = mix(blobDist, dropSDF, morphProgress);
+  
+  // Smooth edges
+  float edgeWidth = 0.01;
+  float blob = 1.0 - smoothstep(0.0, edgeWidth, finalSDF);
   
   // ============ COMPOSE ==========
   vec3 finalColor = rainbowColor;
@@ -163,6 +209,8 @@ void main() {
   vec3 bgColor = vec3(0.97, 0.96, 0.95);
   finalColor = mix(bgColor, finalColor, blob);
   
+  // Fix: When blob is 0, we want background. 
+  // Vignette adds nice touch but let's keep it simple.
   float vignette = 1.0 - dot(uvAspect * 0.8, uvAspect * 0.8);
   finalColor *= 0.9 + vignette * 0.1;
   

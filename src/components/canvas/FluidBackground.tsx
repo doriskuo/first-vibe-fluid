@@ -18,11 +18,26 @@ function FullscreenFluid() {
     uTime: { value: 0 },
     uMouse: { value: new THREE.Vector2(0.5, 0.5) },
     uResolution: { value: new THREE.Vector2(size.width, size.height) },
+    uScrollProgress: { value: 0 },
   }), [size.width, size.height])
 
   useEffect(() => {
     uniforms.uResolution.value.set(size.width, size.height)
   }, [size, uniforms])
+
+  // Scroll listener
+  useEffect(() => {
+    const handleScroll = () => {
+      // Calculate scroll progress (0 to 1) based on a reasonable scroll distance (e.g., 1 full viewport height)
+      // We want the transformation to complete after scrolling 1 viewport height, even if the page is longer.
+      const maxScroll = window.innerHeight * 1.5
+      const progress = Math.min(Math.max(window.scrollY / maxScroll, 0), 1)
+      uniforms.uScrollProgress.value = progress
+    }
+
+    window.addEventListener('scroll', handleScroll, { passive: true })
+    return () => window.removeEventListener('scroll', handleScroll)
+  }, [uniforms])
 
   useFrame(({ clock }) => {
     if (!meshRef.current) return

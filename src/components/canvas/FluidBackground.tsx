@@ -25,25 +25,36 @@ function FullscreenFluid() {
     uniforms.uResolution.value.set(size.width, size.height)
   }, [size, uniforms])
 
+  // Target scroll progress for smoothing
+  const targetScroll = useRef(0)
+
   // Scroll listener
   useEffect(() => {
     const handleScroll = () => {
-      // Calculate scroll progress (0 to 1) based on a reasonable scroll distance (e.g., 1 full viewport height)
-      // We want the transformation to complete after scrolling 1 viewport height, even if the page is longer.
-      const maxScroll = window.innerHeight * 1.5
+      // Increase maxScroll to make the transition slower/require more scrolling
+      // user asked for "more slow and graceful", so we need more scroll distance
+      const maxScroll = window.innerHeight * 2.5
       const progress = Math.min(Math.max(window.scrollY / maxScroll, 0), 1)
-      uniforms.uScrollProgress.value = progress
+      targetScroll.current = progress
     }
 
     window.addEventListener('scroll', handleScroll, { passive: true })
     return () => window.removeEventListener('scroll', handleScroll)
-  }, [uniforms])
+  }, [])
 
   useFrame(({ clock }) => {
     if (!meshRef.current) return
 
     const material = meshRef.current.material as THREE.ShaderMaterial
     material.uniforms.uTime.value = clock.elapsedTime
+
+    // Smooth scroll interpolation
+    // Lerp factor 0.05 is consistent with the mouse smoothing speed
+    material.uniforms.uScrollProgress.value = THREE.MathUtils.lerp(
+      material.uniforms.uScrollProgress.value,
+      targetScroll.current,
+      0.04
+    )
 
     // 滑鼠座標轉換為 0-1
     const targetX = (pointer.x + 1) / 2

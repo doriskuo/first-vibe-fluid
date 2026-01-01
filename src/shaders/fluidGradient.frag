@@ -62,24 +62,69 @@ vec3 hsl2rgb(float h, float s, float l) {
 }
 
 // ========== SHAPE FUNCTIONS ==========
-// Simple SDF for a drop shape. 
-// Concept: Standard circle distance, but we distort the domain first.
+// Rounded Cone SDF by Inigo Quilez
+// Adapted to create a teardrop: r1 = bottom radius, r2 = top radius (small for sharp), h = height
+float sdRoundedCone(vec2 p, float r1, float r2, float h) {
+    vec2 q = vec2(length(p.x), p.y);
+    float b = (r1 - r2) / h;
+    float a = sqrt(1.0 - b * b);
+    float k = dot(q, vec2(-b, a));
+    
+    if (k < 0.0) return length(q) - r1;
+    if (k > a * h) return length(q - vec2(0.0, h)) - r2;
+    return dot(q, vec2(a, b)) - r1;
+}
+
+// Wrapper to match previous signature and orientation
+// r = base radius
 float sdDrop(vec2 p, float r) {
-    // Squeeze the top (positive Y) based on Y distance
-    // This makes the top pointy and bottom round
-    // Shift Y up slightly so the pivot is center-ish
-    p.y += r * 0.5; 
+    // Shift Y so that the "center" of the blob (r) aligns roughly with the bottom sphere
+    // The cone grows UPWARDS from (0,0) in sdRoundedCone logic.
+    // Our p is centered. Let's shift p down so the bottom sphere sits at center?
+    // Or shift p up so the whole shape is centered?
     
-    // As we go up (pV.y > 0), we squeeze X.
-    // Factor can be tuned. 
-    // smoothstep(-r, r*1.5, p.y) creates a tapering factor from bottom to top
-    float taper = smoothstep(-r, r * 2.5, p.y);
-    float widthFactor = 1.0 - taper * 0.6; // Top becomes 40% width (approx)
+    // Previous logic centered the shape somewhat.
+    // Let's position the bottom sphere at y = -r * 0.5 to balance the height.
+    p.y += r * 0.5;
     
-    // Apply width factor to X
-    p.x /= max(0.2, widthFactor); // Avoid div by zero
+    // Configure Teardrop dimensions
+    float r1 = r;              // Bottom radius
+    float r2 = 0.001;          // Top radius (sharp point)
+    // Reduced height from 2.3 to 1.8 for even fatter look
+    float h = r * 1.8;         
     
-    return length(p) - r;
+    // We want to center the shape.
+    // The shape extends from y = -r1 to y = h.
+    // The midpoint is (-r1 + h) / 2.
+    // We want this midpoint to line up with p.y = 0 (viewport center).
+    // So we shift p.y by MINUS midpoint? 
+    // No, SDF is f(p). We want f(0) to map to middle.
+    // So we pass (midpoint) to the internal logic when p is 0.
+    // So p.y += midpoint.
+    
+    float midY = (h - r1) * 0.5;
+    p.y -= midY; // Actually, looking at previous logic...
+    // Let's testing:
+    // If I use p.y -= midY... at p.y=0 => internal y = -midY.
+    // The shape is at [ -r1, h ]. midY is center.
+    // If internal y is -midY... that's below the shape center?
+    // Wait.
+    // Let's stick to the standard: To translate OBJECT by V, change coord p to p - V.
+    // We want to translate the object such that its center (midY) moves to 0.
+    // Translation vector V = (0, -midY).  (Move down by midY)
+    // So p becomes p - (0, -midY) = p + (0, midY).
+    // So p.y += midY.
+    
+    // BUT wait. sdRoundedCone builds the shape starting at (0,0) going UP to (0,h).
+    // And implies a sphere at (0,0). So shape is roughly [-r1, h].
+    // Center is (h - r1)/2.
+    // To move that center to 0, we need to move the object DOWN by center amount.
+    // Object translation -Y means p.y += Y.
+    // So p.y += (h - r1) * 0.5.
+    
+    p.y += (h - r1) * 0.5;
+    
+    return sdRoundedCone(p, r1, r2, h);
 }
 
 // ========== Main ==========
@@ -111,6 +156,16 @@ void main() {
   float mouseDist = length(uvAspect - mouseUv);
   float mouseInfluence = exp(-mouseDist * 4.0) * 0.15;
   distortedUv += normalize(uvAspect - mouseUv + 0.001) * mouseInfluence * sin(time * 3.0 + mouseDist * 10.0);
+  
+  // ============ INTERNAL WOBBLE ON MORPH ============
+  // Add a "shake" when morphing happens (triggered by uScrollProgress)
+  // Use scroll progress rate or just sinusoidal shake based on progress
+  float wobbleIntensity = sin(uScrollProgress * PI) * 0.1; // Peak wobble at 50% scroll
+  vec2 wobble = vec2(
+    sin(time * 5.0 + uScrollProgress * 10.0),
+    cos(time * 4.0 + uScrollProgress * 8.0)
+  ) * wobbleIntensity;
+  distortedUv += wobble;
   
   // ============ RAINBOW GRADIENT (Seamless Fix) ============
   float angle1 = atan(distortedUv.y, distortedUv.x);
@@ -169,8 +224,8 @@ void main() {
   float wave1 = sin(angle * 4.0 + time * 0.5 + shapeMorph * 10.0) * 0.03 * waveStrength;
   float wave2 = sin(angle * 6.0 - time * 0.4 + detailMorph * 5.0) * 0.02 * waveStrength;
   
-  // Dynamic Radius: Shrink from 0.45 to 0.12 (favicon size)
-  float baseRadius = mix(0.42, 0.12, morphProgress);
+  // Dynamic Radius: Shrink from 0.45 to 0.18 (adjusted size)
+  float baseRadius = mix(0.42, 0.18, morphProgress);
   
   // Blob Radius calculation
   float blobRadius = baseRadius + (shapeMorph + detailMorph) * waveStrength + wave1 + wave2;
@@ -183,8 +238,11 @@ void main() {
   // 2. Target State: Smooth Teardrop
   // Calculate SDF for Teardrop, centered
   vec2 dropUV = uvAspect;
-  // Shift drop down slightly as it forms to stay centered visually (point is high)
-  dropUV.y -= mix(0.0, 0.05, morphProgress); 
+  
+  // Shift drop down MORE to center it visually (user requested lower)
+  // FIX: REMOVED manual offset to allow sdDrop to handle centering perfectly.
+  // dropUV.y += mix(0.0, 0.0, morphProgress); 
+  
   // Teardrop SDF
   float dropSDF = sdDrop(dropUV, baseRadius); 
   

@@ -27,8 +27,8 @@ function FullscreenFluid() {
   }, [size, uniforms])
 
   // Framer Motion Spring
-  // stiffness 160, damping 8 (Very low friction = lots of wobble/rebound)
-  const springProgress = useSpring(0, { stiffness: 160, damping: 8 })
+  // stiffness 90 (Softer/Slower), damping 5 (Low friction = wide, slow, visible bounces)
+  const springProgress = useSpring(0, { stiffness: 90, damping: 5 })
 
   // Scroll listener
   useEffect(() => {

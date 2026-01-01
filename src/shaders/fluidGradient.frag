@@ -207,8 +207,11 @@ void main() {
   specular = pow(max(0.0, specular * specular), 3.0) * 1.5;
   
   // ============ SHAPE MORPHING (Blob to Teardrop) ============
-  // Parameters controlled by scroll
-  float morphProgress = smoothstep(0.0, 1.0, uScrollProgress); // Non-linear easing
+  // CRITICAL: useSpring can overshoot > 1.0. 
+  // We clamp morphProgress so the shape definition stops at the perfect teardrop.
+  float morphProgress = clamp(uScrollProgress, 0.0, 1.0);
+  // Optional easing for morph
+  morphProgress = smoothstep(0.0, 1.0, morphProgress);
   
   // 1. Initial State: Noisy Blob
   // Calculate polar coordinates for noise
@@ -239,9 +242,42 @@ void main() {
   // Calculate SDF for Teardrop, centered
   vec2 dropUV = uvAspect;
   
-  // Shift drop down MORE to center it visually (user requested lower)
-  // FIX: REMOVED manual offset to allow sdDrop to handle centering perfectly.
-  // dropUV.y += mix(0.0, 0.0, morphProgress); 
+  // ============ GLOBAL BOUNCE (Framer Motion) ============
+  // If uScrollProgress > 1.0 (Overshoot), we apply a global "Jelly Scale".
+  // This affects the coordinate space of the DROP only.
+  float overshoot = uScrollProgress - 1.0;
+  
+  if (uScrollProgress > 0.95 && abs(overshoot) > 0.001) {
+      // Squash and Stretch based on overshoot
+      // Overshoot > 0 (Impact): Squash Y (make it fatter/shorter)
+      // scale.y < 1.0 -> means object spans MORE uv space -> object looks TALLER?
+      // Wait. uv * 0.9 -> texture is zoomed IN -> Object looks BIGGER.
+      // uv * 1.1 -> texture is zoomed OUT -> Object looks SMALLER.
+      
+      // We want Squash (Shorter Y, Wider X) when Overshoot > 0 (hitting bottom).
+      // Shorter Y -> Object occupies LESS screen space -> Multiplier > 1.0.
+      // Amplified strength for user visibility (was 3.0 -> 4.0)
+      float sy = 1.0 + overshoot * 4.0; 
+      float sx = 1.0 - overshoot * 2.0; 
+      
+      // ROTATIONAL WOBBLE (The "Arc" feel)
+      // Tilt the shape based on the overshoot to give a "jell-o" shake
+      float tiltAngle = overshoot * -2.0; // Angle proportional to impact
+      float c = cos(tiltAngle);
+      float s = sin(tiltAngle);
+      mat2 rot = mat2(c, -s, s, c);
+      
+      // Apply Scale CENTERED
+      // (scale around 0,0 which is the visual center now)
+      dropUV.y *= sy;
+      dropUV.x *= sx;
+      
+      // Apply Rotation
+      dropUV = rot * dropUV;
+      
+      // Inject extra lateral wobble for that "shaking jelly" feel
+      distortedUv.x += sin(overshoot * 20.0) * 0.02;
+  }
   
   // Teardrop SDF
   float dropSDF = sdDrop(dropUV, baseRadius); 

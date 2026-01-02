@@ -20,8 +20,9 @@ export default function Home() {
         </Scene>
       </div>
 
-      {/* Scrollable Area */}
-      <div className="relative w-full h-[300vh] pointer-events-none" />
+      {/* Scrollable Area - Extended for Material Transition */}
+      {/* 0-250vh: Shape morphing | 250vh-400vh: Material transition */}
+      <div className="relative w-full h-[400vh] pointer-events-none" />
     </>
   )
 }

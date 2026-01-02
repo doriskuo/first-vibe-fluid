@@ -6,6 +6,7 @@ uniform float uTime;
 uniform vec2 uMouse;
 uniform vec2 uResolution;
 uniform float uScrollProgress;
+uniform float uMaterialProgress;
 
 #define PI 3.14159265359
 
@@ -177,8 +178,10 @@ void main() {
   float hueShift1 = fbm(distortedUv * 1.2 + time * 0.2, 2) * 0.3;
   float hueShift2 = snoise(distortedUv * 2.0 - time * 0.15) * 0.2;
   
+  // Saturation fades: 0.5 -> 0.1 as material transitions
+  float baseSaturation = mix(0.5, 0.1, uMaterialProgress);
   float satNoise = snoise(distortedUv * 1.5 + time * 0.1);
-  float saturation = 0.5 + satNoise * 0.2; 
+  float saturation = baseSaturation + satNoise * 0.2; 
   float lightNoise = snoise(distortedUv * 1.5 - time * 0.12);
   float lightness = 0.65 + lightNoise * 0.15; 
   
@@ -194,13 +197,15 @@ void main() {
   float liquidPattern = smoothstep(0.15, 0.55, flow1 * flow2);
   
   // ============ IRIDESCENT PEARL EFFECT ============
+  // Pearl intensity fades out with material progress
   float iridescence = snoise(distortedUv * 6.0 + time * 0.25) * 0.6;
   vec3 pearlColor = mix(
     hsl2rgb(fract(h1 + iridescence * 0.1), saturation * 0.3, 0.95),
     hsl2rgb(fract(h2 + iridescence * 0.1), saturation * 0.3, 0.95),
     blend
   );
-  float pearlIntensity = pow(abs(snoise(distortedUv * 3.0 + time * 0.2)), 1.5) * 0.5;
+  // Fade pearl effect: 1.0 at start, 0.0 at full material transition
+  float pearlIntensity = pow(abs(snoise(distortedUv * 3.0 + time * 0.2)), 1.5) * 0.5 * (1.0 - uMaterialProgress);
   
   // ============ SPECULAR HIGHLIGHTS ============
   float specular = snoise(distortedUv * 4.0 + time * 0.35);
@@ -299,9 +304,36 @@ void main() {
   float edgeGlow = smoothstep(blobRadius, blobRadius - 0.15, dist);
   finalColor += rainbowColor * 0.2 * (1.0 - edgeGlow) * blob;
   
-  // ============ BACKGROUND ============
+  // ============ NEON RIM LIGHT (Material Transition) ============
+  // Only active when material transition begins
+  if (uMaterialProgress > 0.01) {
+    // Soft neon colors
+    vec3 softNeonCyan = vec3(0.498, 0.859, 1.0);    // #7FDBFF
+    vec3 softNeonPink = vec3(1.0, 0.522, 0.635);    // #FF85A2
+    vec3 softNeonLavender = vec3(0.788, 0.627, 0.863); // #C9A0DC
+    
+    // Mix neon colors based on hue
+    vec3 neonColor = mix(
+      mix(softNeonCyan, softNeonPink, fract(h1 * 2.0)),
+      softNeonLavender,
+      0.3
+    );
+    
+    // Edge detection: strong at blob boundary
+    float edgeDetect = smoothstep(0.005, 0.015, finalSDF) * smoothstep(0.03, 0.015, finalSDF);
+    float rimIntensity = edgeDetect * uMaterialProgress * 0.6;
+    
+    // Add soft glow
+    finalColor += neonColor * rimIntensity;
+  }
+  
+  // ============ TRANSPARENCY (Material Transition) ============
+  // Opacity: 1.0 -> 0.3-0.5 as material transitions
+  float finalOpacity = mix(1.0, 0.4, uMaterialProgress);
+  
+  // Apply transparency by blending with background based on material progress
   vec3 bgColor = vec3(0.97, 0.96, 0.95);
-  finalColor = mix(bgColor, finalColor, blob);
+  finalColor = mix(bgColor, finalColor, blob * finalOpacity);
   
   // Fix: When blob is 0, we want background. 
   // Vignette adds nice touch but let's keep it simple.

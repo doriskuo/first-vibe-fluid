@@ -200,8 +200,8 @@ void main() {
   // Pearl intensity fades out with material progress
   float iridescence = snoise(distortedUv * 6.0 + time * 0.25) * 0.6;
   vec3 pearlColor = mix(
-    hsl2rgb(fract(h1 + iridescence * 0.1), saturation * 0.3, 0.95),
-    hsl2rgb(fract(h2 + iridescence * 0.1), saturation * 0.3, 0.95),
+    hsl2rgb(fract(h1 + iridescence * 0.1), saturation * 0.3, 0.85),  // Reduced from 0.95 to 0.85 for softer glow
+    hsl2rgb(fract(h2 + iridescence * 0.1), saturation * 0.3, 0.85),
     blend
   );
   // Fade pearl effect: 1.0 at start, 0.0 at full material transition
@@ -209,7 +209,7 @@ void main() {
   
   // ============ SPECULAR HIGHLIGHTS ============
   float specular = snoise(distortedUv * 4.0 + time * 0.35);
-  specular = pow(max(0.0, specular * specular), 3.0) * 1.5;
+  specular = pow(max(0.0, specular * specular), 3.0) * 0.8;  // Reduced from 1.5 to 0.8 for less harsh highlights
   
   // ============ SHAPE MORPHING (Blob to Teardrop) ============
   // CRITICAL: useSpring can overshoot > 1.0. 

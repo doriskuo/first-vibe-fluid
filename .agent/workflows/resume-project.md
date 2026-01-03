@@ -30,6 +30,10 @@ cat docs/projects/*/經驗教訓_lessons.md 2>/dev/null || echo "尚无经验教
 // turbo
 if grep -q "framer-motion" package.json 2>/dev/null; then cat docs/_knowledge/libraries/framer-motion.md 2>/dev/null || true; fi
 
+### Step 6.5: 检查最近错误记录
+// turbo
+echo "=== 检查未解决错误 ===" && tail -50 docs/projects/*/經驗教訓_lessons.md 2>/dev/null | grep -A 10 "最終解決：未解決\|進行中\|Level 3" || echo "无未解决错误"
+
 ### Step 7: 检查程式码版本
 // turbo
 git log -5 --oneline --decorate

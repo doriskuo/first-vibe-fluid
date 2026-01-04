@@ -34,13 +34,12 @@ function FullscreenFluid() {
   // Scroll listener
   useEffect(() => {
     const handleScroll = () => {
-      // Extended scroll range to allow material transition (up to 1.6)
-      // First 2.5vh for shape morphing (0-1), then extra 1.25vh for material transition (1-1.6)
-      const maxScroll = window.innerHeight * 3.75
-      const progress = Math.max(window.scrollY / maxScroll, 0)
-      // Note: No Math.min cap - allow spring overshoot and deep scroll to trigger material transition
+      // 1600vh page: scrollable = 1500vh
+      // scrollValue = 0 to 1.5 at bottom
+      // Shape: 0-1.0 (first 1000vh), Material: 1.0-1.5 (next 500vh)
+      const scrollableDistance = document.documentElement.scrollHeight - window.innerHeight
+      const progress = (window.scrollY / scrollableDistance) * 1.5
 
-      // Update spring target
       springProgress.set(progress)
     }
 
@@ -54,15 +53,14 @@ function FullscreenFluid() {
     const material = meshRef.current.material as THREE.ShaderMaterial
     material.uniforms.uTime.value = clock.elapsedTime
 
-    // Get current spring value (handles interpolation and overshoot automatically)
     const scrollValue = springProgress.get()
     material.uniforms.uScrollProgress.value = scrollValue
 
-    // Material Transition: Trigger after teardrop formation (scrollProgress > 1.1)
-    // Maps 1.1-1.6 scroll range to 0.0-1.0 material progress
+    // Material ONLY starts after shape is fully complete (scrollValue > 1.0)
+    // Maps 1.0-1.5 to 0.0-1.0 material progress
     let materialProgress = 0
-    if (scrollValue > 1.1) {
-      materialProgress = Math.min((scrollValue - 1.1) / 0.5, 1.0)
+    if (scrollValue > 1.0) {
+      materialProgress = Math.min((scrollValue - 1.0) / 0.5, 1.0)
     }
     material.uniforms.uMaterialProgress.value = materialProgress
 

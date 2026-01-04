@@ -159,12 +159,13 @@ void main() {
   distortedUv += normalize(uvAspect - mouseUv + 0.001) * mouseInfluence * sin(time * 3.0 + mouseDist * 10.0);
   
   // ============ INTERNAL WOBBLE ON MORPH ============
-  // Add a "shake" when morphing happens (triggered by uScrollProgress)
-  // Use scroll progress rate or just sinusoidal shake based on progress
-  float wobbleIntensity = sin(uScrollProgress * PI) * 0.1; // Peak wobble at 50% scroll
+  // Clamp scroll for shape effects (scrollValue can go to 1.5 for material)
+  float clampedScroll = clamp(uScrollProgress, 0.0, 1.0);
+  // Add a "shake" when morphing happens
+  float wobbleIntensity = sin(clampedScroll * PI) * 0.1; // Peak wobble at 50% scroll
   vec2 wobble = vec2(
-    sin(time * 5.0 + uScrollProgress * 10.0),
-    cos(time * 4.0 + uScrollProgress * 8.0)
+    sin(time * 5.0 + clampedScroll * 10.0),
+    cos(time * 4.0 + clampedScroll * 8.0)
   ) * wobbleIntensity;
   distortedUv += wobble;
   
@@ -251,37 +252,18 @@ void main() {
   // If uScrollProgress > 1.0 (Overshoot), we apply a global "Jelly Scale".
   // This affects the coordinate space of the DROP only.
   float overshoot = uScrollProgress - 1.0;
+  // CRITICAL: Clamp overshoot to prevent shape distortion (scrollValue goes to 1.5)
+  overshoot = clamp(overshoot, -0.12, 0.12);
   
-  if (uScrollProgress > 0.95 && abs(overshoot) > 0.001) {
-      // Squash and Stretch based on overshoot
-      // Overshoot > 0 (Impact): Squash Y (make it fatter/shorter)
-      // scale.y < 1.0 -> means object spans MORE uv space -> object looks TALLER?
-      // Wait. uv * 0.9 -> texture is zoomed IN -> Object looks BIGGER.
-      // uv * 1.1 -> texture is zoomed OUT -> Object looks SMALLER.
+  // Only apply bounce when transitioning to 1.0, not during material phase
+  if (clampedScroll > 0.95 && uScrollProgress < 1.15 && abs(overshoot) > 0.001) {
+      // Squash and Stretch: vertical only, minimal horizontal
+      float sy = 1.0 + overshoot * 3.5; 
+      float sx = 1.0 - overshoot * 0.5;  // Reduced from 2.0 to 0.5
       
-      // We want Squash (Shorter Y, Wider X) when Overshoot > 0 (hitting bottom).
-      // Shorter Y -> Object occupies LESS screen space -> Multiplier > 1.0.
-      // Amplified strength for user visibility (was 3.0 -> 4.0)
-      float sy = 1.0 + overshoot * 4.0; 
-      float sx = 1.0 - overshoot * 2.0; 
-      
-      // ROTATIONAL WOBBLE (The "Arc" feel)
-      // Tilt the shape based on the overshoot to give a "jell-o" shake
-      float tiltAngle = overshoot * -2.0; // Angle proportional to impact
-      float c = cos(tiltAngle);
-      float s = sin(tiltAngle);
-      mat2 rot = mat2(c, -s, s, c);
-      
-      // Apply Scale CENTERED
-      // (scale around 0,0 which is the visual center now)
+      // Apply Scale (no rotation - just up/down bounce)
       dropUV.y *= sy;
       dropUV.x *= sx;
-      
-      // Apply Rotation
-      dropUV = rot * dropUV;
-      
-      // Inject extra lateral wobble for that "shaking jelly" feel
-      distortedUv.x += sin(overshoot * 20.0) * 0.02;
   }
   
   // Teardrop SDF
@@ -305,38 +287,36 @@ void main() {
   finalColor += rainbowColor * 0.2 * (1.0 - edgeGlow) * blob;
   
   // ============ NEON RIM LIGHT (Material Transition) ============
-  // Only active when material transition begins
   if (uMaterialProgress > 0.01) {
     // Soft neon colors
-    vec3 softNeonCyan = vec3(0.498, 0.859, 1.0);    // #7FDBFF
-    vec3 softNeonPink = vec3(1.0, 0.522, 0.635);    // #FF85A2
-    vec3 softNeonLavender = vec3(0.788, 0.627, 0.863); // #C9A0DC
+    vec3 softCyan = vec3(0.5, 0.85, 1.0);
+    vec3 softPink = vec3(1.0, 0.55, 0.7);
+    vec3 softLavender = vec3(0.75, 0.6, 0.9);
     
-    // Mix neon colors based on hue
+    // Mix based on position
     vec3 neonColor = mix(
-      mix(softNeonCyan, softNeonPink, fract(h1 * 2.0)),
-      softNeonLavender,
+      mix(softCyan, softPink, fract(h1 * 2.0)),
+      softLavender,
       0.3
     );
     
-    // Edge detection: strong at blob boundary
-    float edgeDetect = smoothstep(0.005, 0.015, finalSDF) * smoothstep(0.03, 0.015, finalSDF);
-    float rimIntensity = edgeDetect * uMaterialProgress * 0.6;
-    
-    // Add soft glow
+    // Stronger edge rim light
+    float edgeDetect = smoothstep(0.003, 0.012, finalSDF) * smoothstep(0.025, 0.012, finalSDF);
+    float rimIntensity = edgeDetect * uMaterialProgress * 0.8;
     finalColor += neonColor * rimIntensity;
+    
+    // Dark edge outline for glass visibility
+    float darkEdge = smoothstep(0.0, 0.006, finalSDF) * smoothstep(0.014, 0.006, finalSDF);
+    finalColor = mix(finalColor, vec3(0.35, 0.4, 0.45), darkEdge * uMaterialProgress * 0.35);
   }
   
   // ============ TRANSPARENCY (Material Transition) ============
-  // Opacity: 1.0 -> 0.3-0.5 as material transitions
-  float finalOpacity = mix(1.0, 0.4, uMaterialProgress);
+  // Less transparent: 1.0 -> 0.65 (keep shape visible!)
+  float finalOpacity = mix(1.0, 0.65, uMaterialProgress);
   
-  // Apply transparency by blending with background based on material progress
   vec3 bgColor = vec3(0.97, 0.96, 0.95);
   finalColor = mix(bgColor, finalColor, blob * finalOpacity);
   
-  // Fix: When blob is 0, we want background. 
-  // Vignette adds nice touch but let's keep it simple.
   float vignette = 1.0 - dot(uvAspect * 0.8, uvAspect * 0.8);
   finalColor *= 0.9 + vignette * 0.1;
   

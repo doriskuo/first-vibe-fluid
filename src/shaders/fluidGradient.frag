@@ -8,6 +8,19 @@ uniform vec2 uResolution;
 uniform float uScrollProgress;
 uniform float uMaterialProgress;
 
+// Leva-controlled uniforms
+uniform float uBounceStrength;
+uniform float uBounceHorizontal;
+uniform float uGlassOpacity;
+uniform float uGlassBrightness;
+uniform float uRGBIntensity;
+uniform float uRGBPulseSpeed;
+uniform float uRimLightStrength;
+uniform float uDarkEdgeStrength;
+uniform vec3 uCyanColor;
+uniform vec3 uPinkColor;
+uniform vec3 uLavenderColor;
+
 #define PI 3.14159265359
 
 // ========== Simplex Noise ==========
@@ -257,9 +270,9 @@ void main() {
   
   // Only apply bounce when transitioning to 1.0, not during material phase
   if (clampedScroll > 0.95 && uScrollProgress < 1.15 && abs(overshoot) > 0.001) {
-      // Squash and Stretch: vertical only, minimal horizontal
-      float sy = 1.0 + overshoot * 3.5; 
-      float sx = 1.0 - overshoot * 0.5;  // Reduced from 2.0 to 0.5
+      // Squash and Stretch: use Leva-controlled values
+      float sy = 1.0 + overshoot * uBounceStrength; 
+      float sx = 1.0 - overshoot * uBounceHorizontal;
       
       // Apply Scale (no rotation - just up/down bounce)
       dropUV.y *= sy;
@@ -288,31 +301,26 @@ void main() {
   
   // ============ NEON RIM LIGHT (Material Transition) ============
   if (uMaterialProgress > 0.01) {
-    // Soft neon colors
-    vec3 softCyan = vec3(0.5, 0.85, 1.0);
-    vec3 softPink = vec3(1.0, 0.55, 0.7);
-    vec3 softLavender = vec3(0.75, 0.6, 0.9);
-    
-    // Mix based on position
+    // Use Leva-controlled colors
     vec3 neonColor = mix(
-      mix(softCyan, softPink, fract(h1 * 2.0)),
-      softLavender,
+      mix(uCyanColor, uPinkColor, fract(h1 * 2.0)),
+      uLavenderColor,
       0.3
     );
     
-    // Stronger edge rim light
+    // Rim light with Leva-controlled intensity
     float edgeDetect = smoothstep(0.003, 0.012, finalSDF) * smoothstep(0.025, 0.012, finalSDF);
-    float rimIntensity = edgeDetect * uMaterialProgress * 0.8;
+    float rimIntensity = edgeDetect * uMaterialProgress * uRimLightStrength;
     finalColor += neonColor * rimIntensity;
     
-    // Dark edge outline for glass visibility
+    // Dark edge outline with Leva-controlled strength
     float darkEdge = smoothstep(0.0, 0.006, finalSDF) * smoothstep(0.014, 0.006, finalSDF);
-    finalColor = mix(finalColor, vec3(0.35, 0.4, 0.45), darkEdge * uMaterialProgress * 0.35);
+    finalColor = mix(finalColor, vec3(0.35, 0.4, 0.45), darkEdge * uMaterialProgress * uDarkEdgeStrength);
   }
   
   // ============ TRANSPARENCY (Material Transition) ============
-  // Less transparent: 1.0 -> 0.65 (keep shape visible!)
-  float finalOpacity = mix(1.0, 0.65, uMaterialProgress);
+  // Use Leva-controlled glass opacity
+  float finalOpacity = mix(1.0, uGlassOpacity, uMaterialProgress);
   
   vec3 bgColor = vec3(0.97, 0.96, 0.95);
   finalColor = mix(bgColor, finalColor, blob * finalOpacity);

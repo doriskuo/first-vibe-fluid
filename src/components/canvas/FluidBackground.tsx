@@ -3,11 +3,11 @@
 import { useRef, useMemo, useEffect } from 'react'
 import { useFrame, useThree } from '@react-three/fiber'
 import * as THREE from 'three'
-import { useSpring } from 'framer-motion'
 
 import vertexShader from '@/shaders/fluidGradient.vert'
 import fragmentShader from '@/shaders/fluidGradient.frag'
 import { useShaderControls } from '@/components/debug/useShaderControls'
+import { useScrollAnimation } from '@/hooks/useScrollAnimation'
 
 function FullscreenFluid() {
   const meshRef = useRef<THREE.Mesh>(null)
@@ -15,6 +15,9 @@ function FullscreenFluid() {
 
   // Leva controls for real-time parameter adjustment
   const shaderConfig = useShaderControls()
+
+  // New scroll animation hook (replaces hand-written scroll listener)
+  const { springProgress } = useScrollAnimation()
 
   // Mouse tracking for fluid interaction
   const mousePos = useRef({ x: 0.5, y: 0.5 })
@@ -43,29 +46,13 @@ function FullscreenFluid() {
     uniforms.uResolution.value.set(size.width, size.height)
   }, [size, uniforms])
 
-  // Framer Motion Spring
-  const springProgress = useSpring(0, { stiffness: 90, damping: 5 })
-
-  // Scroll listener
-  useEffect(() => {
-    const handleScroll = () => {
-      // 1600vh page: scrollable = 1500vh
-      // scrollValue = 0 to 1.5 at bottom
-      const scrollableDistance = document.documentElement.scrollHeight - window.innerHeight
-      const progress = (window.scrollY / scrollableDistance) * 1.5
-      springProgress.set(progress)
-    }
-
-    window.addEventListener('scroll', handleScroll, { passive: true })
-    return () => window.removeEventListener('scroll', handleScroll)
-  }, [springProgress])
-
   useFrame(({ clock }) => {
     if (!meshRef.current) return
 
     const material = meshRef.current.material as THREE.ShaderMaterial
     material.uniforms.uTime.value = clock.elapsedTime
 
+    // Get scroll value from new hook (same output as before)
     const scrollValue = springProgress.get()
     material.uniforms.uScrollProgress.value = scrollValue
 

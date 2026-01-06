@@ -261,36 +261,23 @@ void main() {
   // Calculate SDF for Teardrop, centered
   vec2 dropUV = uvAspect;
   
-      // ============ SPRING BOTTOM BOUNCE ============
-      // Scroll overshoot value (driven by Framer Motion spring)
-      float overshoot = uScrollProgress - 1.0;
-      // Clamp significantly so we don't distort too much if user scrolls far
-      // The bounce effect should just be a subtle settling
-      overshoot = clamp(overshoot, -0.15, 0.15);
-
-      // User request: Bottom part pulls down like a spring, top part stays stationary.
-      // We use a gradient mask based on Y coordinate.
-      // Top of teardrop is roughly at y = +0.25 (h=0.32, -shift).
-      // Bottom is at y = -0.18 (-r1).
+  // ============ GLOBAL BOUNCE (Framer Motion) ============
+  // If uScrollProgress > 1.0 (Overshoot), we apply a global "Jelly Scale".
+  // This affects the coordinate space of the DROP only.
+  float overshoot = uScrollProgress - 1.0;
+  // CRITICAL: Clamp overshoot to prevent shape distortion (scrollValue goes to 1.5)
+  overshoot = clamp(overshoot, -0.12, 0.12);
+  
+  // Only apply bounce when transitioning to 1.0, not during material phase
+  if (clampedScroll > 0.95 && uScrollProgress < 1.15 && abs(overshoot) > 0.001) {
+      // Squash and Stretch: use Leva-controlled values
+      float sy = 1.0 + overshoot * uBounceStrength; 
+      float sx = 1.0 - overshoot * uBounceHorizontal;
       
-      // Create a gradient that is 0.0 at y=0.1 (neck) and 1.0 at y=-0.2 (bottom)
-      float stretchMask = smoothstep(0.1, -0.3, dropUV.y);
-      
-      // Apply displacement: move coordinate UP to move pixels DOWN
-      // We want overshoot > 0 (pull down) to move bottom down.
-      // So coord -= offset.
-      // "Slightly pull down" -> reduce strength a bit
-      float bounceOffset = overshoot * uBounceStrength * 0.8 * stretchMask;
-      
-      dropUV.y -= bounceOffset;
-      
-      // Also apply a slight horizontal squash at the bottom to maintain volume feeling?
-      // When stretched down (overshoot > 0), getting thinner.
-      // When compressed up (overshoot < 0), getting wider.
-      // dropUV.x *= 1.0 + overshoot * uBounceStrength * 0.3 * stretchMask;
-      
-      // Simple vertical pulse is often cleaner for "spring" feel.
-      // Let's stick to vertical first as requested.
+      // Apply Scale (no rotation - just up/down bounce)
+      dropUV.y *= sy;
+      dropUV.x *= sx;
+  }
   
   // Teardrop SDF
   float dropSDF = sdDrop(dropUV, baseRadius); 

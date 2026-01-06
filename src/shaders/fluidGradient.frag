@@ -313,9 +313,10 @@ void main() {
     float rimIntensity = edgeDetect * uMaterialProgress * uRimLightStrength;
     finalColor += neonColor * rimIntensity;
     
-    // Dark edge outline with Leva-controlled strength
+    // Glass edge outline - clean light blue-white (not gray)
     float darkEdge = smoothstep(0.0, 0.006, finalSDF) * smoothstep(0.014, 0.006, finalSDF);
-    finalColor = mix(finalColor, vec3(0.35, 0.4, 0.45), darkEdge * uMaterialProgress * uDarkEdgeStrength);
+    vec3 glassEdgeColor = vec3(0.75, 0.82, 0.9);  // Clean cool blue-white
+    finalColor = mix(finalColor, glassEdgeColor, darkEdge * uMaterialProgress * uDarkEdgeStrength);
   }
   
   // ============ TRANSPARENCY (Material Transition) ============

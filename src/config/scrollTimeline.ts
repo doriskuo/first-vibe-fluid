@@ -30,34 +30,34 @@ export const scrollConfig = {
     stages: [
         {
             name: 'liquid',
-            scroll: [0, 0.33],
+            scroll: [0, 0.20],
             uniforms: {
                 uMorphProgress: [0, 0.5],  // 形狀開始變化
             },
         },
         {
             name: 'teardrop',
-            scroll: [0.33, 0.67],
+            scroll: [0.20, 0.45],
             uniforms: {
                 uMorphProgress: [0.5, 1.0],  // 形狀完成
             },
         },
         {
             name: 'bounce',
-            scroll: [0.67, 0.72],
+            scroll: [0.45, 0.50],
             // 這個階段由 Framer Motion spring 處理
             // 不需要 uniform 映射
         },
         {
             name: 'glass',
-            scroll: [0.72, 0.85],
+            scroll: [0.50, 0.75],
             uniforms: {
                 uMaterialProgress: [0, 0.6],  // 變透明
             },
         },
         {
             name: 'rgbGlow',
-            scroll: [0.85, 1.0],
+            scroll: [0.75, 1.0],
             uniforms: {
                 uMaterialProgress: [0.6, 1.0],  // RGB 發光
             },

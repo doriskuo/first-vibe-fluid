@@ -261,43 +261,26 @@ void main() {
   // Calculate SDF for Teardrop, centered
   vec2 dropUV = uvAspect;
   
-    // ============ GLOBAL BOUNCE (Framer Motion) ============
-    // If uScrollProgress > 1.0 (Overshoot), we apply a "Bulge" to the bottom.
-    // This affects the radius of the DROP base.
-    float overshoot = uScrollProgress - 1.0;
-    // Keep clamp to prevent extreme distortion, but allow oscillation
-    
-    float bulge = 0.0;
-    
-    // Only apply bounce when transitioning/settling around 1.0
-    // We widen the window slightly to capture the full spring tail
-    if (uScrollProgress > 0.9 && uScrollProgress < 1.2) {
-        // Use overshoot directly as the bulge signal
-        // Positive overshoot = downward momentum?
-        // We want "撑开" (expand) when it settles.
-        // Usually spring oscillates +/-.
-        // Let's map absolute overshoot or raw overshoot to expansion?
-        // User said: "撑开再彈回去" (Expand then bounce back). 
-        // This implies r1 increases then returns to normal.
-        
-        // Let's make bulge proportional to the "impact" or "excess" energy.
-        // Or simply map the spring oscillation to radius oscillation.
-        
-        // If we use raw `overshoot`, it goes + / - / + / -.
-        // + overshoot (scrolled past 1.0) -> Expand?
-        // - overshoot (bounced back < 1.0) -> Contract?
-        // This simulates volume conservation somewhat.
-        
-        // Scale factor:
-        // uBounceStrength is ~3.5. overshoot ~0.1 max.
-        // 0.1 * 3.5 = 0.35 (35% radius change).
-        // Maybe tone it down a bit for radius.
-        bulge = overshoot * uBounceStrength * 0.5;
-    }
-    
-    // Teardrop SDF with Bulge
-    // We modify sdDrop to take bulge
-    float dropSDF = sdDrop(dropUV, baseRadius * (1.0 + bulge)); 
+  // ============ GLOBAL BOUNCE (Framer Motion) ============
+  // If uScrollProgress > 1.0 (Overshoot), we apply a global "Jelly Scale".
+  // This affects the coordinate space of the DROP only.
+  float overshoot = uScrollProgress - 1.0;
+  // CRITICAL: Clamp overshoot to prevent shape distortion (scrollValue goes to 1.5)
+  overshoot = clamp(overshoot, -0.12, 0.12);
+  
+  // Only apply bounce when transitioning to 1.0, not during material phase
+  if (clampedScroll > 0.95 && uScrollProgress < 1.15 && abs(overshoot) > 0.001) {
+      // Squash and Stretch: use Leva-controlled values
+      float sy = 1.0 + overshoot * uBounceStrength; 
+      float sx = 1.0 - overshoot * uBounceHorizontal;
+      
+      // Apply Scale (no rotation - just up/down bounce)
+      dropUV.y *= sy;
+      dropUV.x *= sx;
+  }
+  
+  // Teardrop SDF
+  float dropSDF = sdDrop(dropUV, baseRadius); 
   
   // 3. Mix Shapes
   // We use the scroll progress to blend between the "Blob Distance" and "Teardrop Distance"

@@ -277,13 +277,17 @@ void main() {
   // ============ JELLY SHAPE BOUNCE ============
   // Top fixed, Bottom behaves like jelly (Volume Preserving)
   
-  // We use the same overshoot calculated above (or recalc if simpler scope-wise)
-  // To avoid scope issues if above chunk fails or scope is weird:
   float bounceSignal = uScrollProgress - 1.0;
   bounceSignal = clamp(bounceSignal, -0.15, 0.15);
   
-  // Only apply when settling
-  if (abs(bounceSignal) > 0.001 && uScrollProgress > 0.9) {
+  // Damping: The bounce should happen around the transition (1.0).
+  // If we scroll deeper (e.g. to 1.5), the shape should settle back to normal.
+  // We fade out the deformation between 1.05 and 1.25.
+  float deformationDamping = 1.0 - smoothstep(1.05, 1.25, uScrollProgress);
+  bounceSignal *= deformationDamping;
+  
+  // Only apply when settling and damping allows it
+  if (abs(bounceSignal) > 0.001 && uScrollProgress > 0.9 && deformationDamping > 0.0) {
       // Create Gradient Mask: 0 at Top (y=0.15), 1 at Bottom (y=-0.25)
       // This ensures the "neck" and "top" never move.
       float jellyMask = smoothstep(0.15, -0.3, dropUV.y);

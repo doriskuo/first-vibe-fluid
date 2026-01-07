@@ -91,52 +91,20 @@ float sdRoundedCone(vec2 p, float r1, float r2, float h) {
 
 // Wrapper to match previous signature and orientation
 // r = base radius
-float sdDrop(vec2 p, float r) {
-    // Shift Y so that the "center" of the blob (r) aligns roughly with the bottom sphere
-    // The cone grows UPWARDS from (0,0) in sdRoundedCone logic.
-    // Our p is centered. Let's shift p down so the bottom sphere sits at center?
-    // Or shift p up so the whole shape is centered?
-    
-    // Previous logic centered the shape somewhat.
-    // Let's position the bottom sphere at y = -r * 0.5 to balance the height.
+float sdDrop(vec2 p, float r, float extension) {
     p.y += r * 0.5;
     
-    // Configure Teardrop dimensions
-    float r1 = r;              // Bottom radius
-    float r2 = 0.001;          // Top radius (sharp point)
-    // Reduced height from 2.3 to 1.8 for even fatter look
-    float h = r * 1.8;         
+    float r1 = r;
+    float r2 = 0.001;
+    // Base height 1.8r, plus dynamic extension
+    float h = r * 1.8 + extension; 
     
-    // We want to center the shape.
-    // The shape extends from y = -r1 to y = h.
-    // The midpoint is (-r1 + h) / 2.
-    // We want this midpoint to line up with p.y = 0 (viewport center).
-    // So we shift p.y by MINUS midpoint? 
-    // No, SDF is f(p). We want f(0) to map to middle.
-    // So we pass (midpoint) to the internal logic when p is 0.
-    // So p.y += midpoint.
-    
-    float midY = (h - r1) * 0.5;
-    p.y -= midY; // Actually, looking at previous logic...
-    // Let's testing:
-    // If I use p.y -= midY... at p.y=0 => internal y = -midY.
-    // The shape is at [ -r1, h ]. midY is center.
-    // If internal y is -midY... that's below the shape center?
-    // Wait.
-    // Let's stick to the standard: To translate OBJECT by V, change coord p to p - V.
-    // We want to translate the object such that its center (midY) moves to 0.
-    // Translation vector V = (0, -midY).  (Move down by midY)
-    // So p becomes p - (0, -midY) = p + (0, midY).
-    // So p.y += midY.
-    
-    // BUT wait. sdRoundedCone builds the shape starting at (0,0) going UP to (0,h).
-    // And implies a sphere at (0,0). So shape is roughly [-r1, h].
-    // Center is (h - r1)/2.
-    // To move that center to 0, we need to move the object DOWN by center amount.
-    // Object translation -Y means p.y += Y.
-    // So p.y += (h - r1) * 0.5.
-    
-    p.y += (h - r1) * 0.5;
+    // Centering logic:
+    // Standard centering shift = (h - r1) * 0.5.
+    // To keep TOP fixed as height grows:
+    // We need additional shift of extension * 0.5.
+    // Total shift = (h - r1) * 0.5 + extension * 0.5.
+    p.y += (h - r1) * 0.5 + extension * 0.5;
     
     return sdRoundedCone(p, r1, r2, h);
 }
@@ -261,26 +229,17 @@ void main() {
   // Calculate SDF for Teardrop, centered
   vec2 dropUV = uvAspect;
   
-  // ============ GLOBAL BOUNCE (Framer Motion) ============
-  // If uScrollProgress > 1.0 (Overshoot), we apply a global "Jelly Scale".
-  // This affects the coordinate space of the DROP only.
-  float overshoot = uScrollProgress - 1.0;
-  // CRITICAL: Clamp overshoot to prevent shape distortion (scrollValue goes to 1.5)
-  overshoot = clamp(overshoot, -0.12, 0.12);
-  
-  // Only apply bounce when transitioning to 1.0, not during material phase
-  if (clampedScroll > 0.95 && uScrollProgress < 1.15 && abs(overshoot) > 0.001) {
-      // Squash and Stretch: use Leva-controlled values
-      float sy = 1.0 + overshoot * uBounceStrength; 
-      float sx = 1.0 - overshoot * uBounceHorizontal;
+      // ============ SPRING BOUNCE (Height Extension) ============
+      // Scroll overshoot value (driven by Framer Motion spring)
+      float overshoot = uScrollProgress - 1.0;
       
-      // Apply Scale (no rotation - just up/down bounce)
-      dropUV.y *= sy;
-      dropUV.x *= sx;
-  }
+      // Calculate extension amount based on overshoot
+      // We want subtle effect, so we scale it down.
+      // uBounceStrength is ~3.5. We get ~10% extension.
+      float extension = overshoot * uBounceStrength * 0.3;
   
-  // Teardrop SDF
-  float dropSDF = sdDrop(dropUV, baseRadius); 
+  // Teardrop SDF with dynamic height extension
+  float dropSDF = sdDrop(dropUV, baseRadius, extension); 
   
   // 3. Mix Shapes
   // We use the scroll progress to blend between the "Blob Distance" and "Teardrop Distance"

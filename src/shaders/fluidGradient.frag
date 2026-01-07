@@ -274,36 +274,24 @@ void main() {
   // Calculate SDF for Teardrop, centered
   vec2 dropUV = uvAspect;
   
-  // ============ JELLY SHAPE BOUNCE ============
-  // Top fixed, Bottom behaves like jelly (Volume Preserving)
+  // ============ JELLY BOUNCE (底緣微微擺動) ============
+  // 只有底部邊緣上下晃動，像布丁一樣，頂部完全不動
   
   float bounceSignal = uScrollProgress - 1.0;
-  bounceSignal = clamp(bounceSignal, -0.15, 0.15);
+  bounceSignal = clamp(bounceSignal, -0.1, 0.1);  // 減少幅度
   
-  // Damping: The bounce should happen around the transition (1.0).
-  // If we scroll deeper (e.g. to 1.5), the shape should settle back to normal.
-  // We fade out the deformation between 1.05 and 1.25.
-  float deformationDamping = 1.0 - smoothstep(1.05, 1.25, uScrollProgress);
+  // Damping: 彈跳只在 scroll = 1.0 附近發生
+  float deformationDamping = 1.0 - smoothstep(1.05, 1.2, uScrollProgress);
   bounceSignal *= deformationDamping;
   
-  // Only apply when settling and damping allows it
   if (abs(bounceSignal) > 0.001 && uScrollProgress > 0.9 && deformationDamping > 0.0) {
-      // Create Gradient Mask: 0 at Top (y=0.15), 1 at Bottom (y=-0.25)
-      // This ensures the "neck" and "top" never move.
-      float jellyMask = smoothstep(0.15, -0.3, dropUV.y);
+      // 只影響底部邊緣 (y < -0.1)
+      // jellyMask: 0 在中間，1 在最底部
+      float jellyMask = smoothstep(-0.05, -0.25, dropUV.y);
       
-      // 1. Vertical Stretch (Gravity pull)
-      // When overshoot > 0 (momentum down), we pull bottom down.
-      // UV modification: to move pixel DOWN, we subtract from Y.
-      float yStretch = bounceSignal * uBounceStrength * 0.4 * jellyMask;
-      dropUV.y -= yStretch;
-      
-      // 2. Horizontal Squash (Volume Conservation)
-      // When stretched vertically (overshoot > 0), it should get thinner (squash).
-      // Thinner = Scale UV UP.
-      // Scale factor > 1.0.
-      float xSquash = 1.0 + bounceSignal * uBounceStrength * 0.2 * jellyMask;
-      dropUV.x *= xSquash;
+      // 只做 Y 軸微微偏移，不做水平壓縮
+      float yJiggle = bounceSignal * uBounceStrength * 0.15 * jellyMask;
+      dropUV.y -= yJiggle;
   }
   
   // Teardrop SDF
@@ -349,6 +337,11 @@ void main() {
   // ============ TRANSPARENCY (Material Transition) ============
   // Use Leva-controlled glass opacity
   float finalOpacity = mix(1.0, uGlassOpacity, uMaterialProgress);
+  
+  // === 2D FADEOUT (順序切換到 3D) ===
+  // 2dFadeout 階段: 1500-2100vh → scrollValue 1.5-2.1
+  float fadeOut = 1.0 - smoothstep(1.5, 2.1, uScrollProgress);
+  finalOpacity *= fadeOut;
   
   vec3 bgColor = vec3(0.97, 0.96, 0.95);
   finalColor = mix(bgColor, finalColor, blob * finalOpacity);

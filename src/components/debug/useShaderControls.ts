@@ -31,8 +31,8 @@ export function useShaderControls(): ShaderConfig {
     const bounce = useControls('彈跳效果', {
         bounceStrength: { value: 2.0, min: 0, max: 10, step: 0.1 },
         bounceHorizontal: { value: 0.5, min: 0, max: 2, step: 0.1 },
-        springStiffness: { value: 160, min: 10, max: 300, step: 10 },
-        springDamping: { value: 3, min: 1, max: 40, step: 1 },
+        springStiffness: { value: 350, min: 10, max: 500, step: 10 },  // 更快彈跳
+        springDamping: { value: 12, min: 1, max: 40, step: 1 },        // 約 3 下收斂
     })
 
     const material = useControls('材質轉換', {

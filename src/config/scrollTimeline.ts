@@ -1,85 +1,122 @@
 /**
- * 滾動時間軸配置
+ * 滾動時間軸配置 (VH-Based)
  * 
- * 這是整個滾動動畫的核心配置檔案。
- * 新增/修改階段只需要改這裡。
+ * 每個效果定義自己需要的滾動距離（vh）
+ * 總頁面高度 = 所有效果的 vh 累加
  */
 
 export interface ScrollStage {
     name: string
-    /** 滾動範圍 [start, end]，0-1 表示整個頁面 */
-    scroll: [number, number]
+    /** 這個效果需要的滾動距離（vh） */
+    durationVh: number
     /** 這個階段控制的 uniform 及其映射範圍 */
     uniforms?: {
-        [key: string]: [number, number]  // [startValue, endValue]
+        [key: string]: [number, number]
     }
-    /** 進入這個階段時觸發的回調 */
-    onEnter?: () => void
-    /** 離開這個階段時觸發的回調 */
-    onLeave?: () => void
 }
 
+// 每個效果的滾動距離定義
+export const stages: ScrollStage[] = [
+    {
+        name: 'liquid',
+        durationVh: 200,
+        uniforms: {
+            uMorphProgress: [0, 0.5],
+        },
+    },
+    {
+        name: 'teardrop',
+        durationVh: 300,
+        uniforms: {
+            uMorphProgress: [0.5, 1.0],
+        },
+    },
+    {
+        name: 'bounce',
+        durationVh: 100,
+        // Framer Motion spring 處理
+    },
+    {
+        name: 'glass',
+        durationVh: 400,  // 調大這個值 = 2D 玻璃效果更長
+        uniforms: {
+            uMaterialProgress: [0, 0.6],
+        },
+    },
+    {
+        name: 'rgbGlow',
+        durationVh: 500,  // 調大這個值 = RGB 發光效果更長
+        uniforms: {
+            uMaterialProgress: [0.6, 1.0],
+        },
+    },
+    {
+        name: '2dFadeout',
+        durationVh: 600,  // 調大 = 淡出更慢
+        uniforms: {
+            u2DOpacity: [1.0, 0.0],
+        },
+    },
+    {
+        name: '3dGlass',
+        durationVh: 300,
+        uniforms: {
+            u3DOpacity: [0.0, 1.0],
+        },
+    },
+]
+
+// 自動計算總頁面高度
+export const totalPageHeightVh = stages.reduce((sum, stage) => sum + stage.durationVh, 0)
+
+// 計算每個階段的起止滾動位置 (累加)
+export interface ComputedStage extends ScrollStage {
+    startVh: number
+    endVh: number
+    startProgress: number  // 0-1 進度
+    endProgress: number    // 0-1 進度
+}
+
+export const computedStages: ComputedStage[] = (() => {
+    let currentVh = 0
+    return stages.map(stage => {
+        const startVh = currentVh
+        const endVh = currentVh + stage.durationVh
+        currentVh = endVh
+        return {
+            ...stage,
+            startVh,
+            endVh,
+            startProgress: startVh / totalPageHeightVh,
+            endProgress: endVh / totalPageHeightVh,
+        }
+    })
+})()
+
+// 為了向後兼容，保留 scrollConfig 格式
 export const scrollConfig = {
-    /** 頁面總高度 */
-    pageHeight: '1600vh',
-
-    /** 滾動乘數：scrollValue = scrollProgress * multiplier */
-    scrollMultiplier: 1.5,
-
-    /** 各階段配置 */
-    stages: [
-        {
-            name: 'liquid',
-            scroll: [0, 0.20],
-            uniforms: {
-                uMorphProgress: [0, 0.5],  // 形狀開始變化
-            },
-        },
-        {
-            name: 'teardrop',
-            scroll: [0.20, 0.45],
-            uniforms: {
-                uMorphProgress: [0.5, 1.0],  // 形狀完成
-            },
-        },
-        {
-            name: 'bounce',
-            scroll: [0.45, 0.50],
-            // 這個階段由 Framer Motion spring 處理
-            // 不需要 uniform 映射
-        },
-        {
-            name: 'glass',
-            scroll: [0.50, 0.75],
-            uniforms: {
-                uMaterialProgress: [0, 0.6],  // 變透明
-            },
-        },
-        {
-            name: 'rgbGlow',
-            scroll: [0.75, 1.0],
-            uniforms: {
-                uMaterialProgress: [0.6, 1.0],  // RGB 發光
-            },
-        },
-    ] as ScrollStage[],
+    pageHeight: `${totalPageHeightVh}vh`,
+    scrollMultiplier: totalPageHeightVh / 1000,  // 動態計算
+    stages: computedStages.map(s => ({
+        name: s.name,
+        scroll: [s.startProgress, s.endProgress] as [number, number],
+        uniforms: s.uniforms,
+    })),
 }
 
 /**
- * 工具函數：根據滾動進度計算某個 uniform 的值
+ * 根據滾動進度計算某個 uniform 的值
  */
 export function getUniformValue(
     scrollProgress: number,
     uniformName: string
 ): number | null {
-    for (const stage of scrollConfig.stages) {
-        if (scrollProgress >= stage.scroll[0] && scrollProgress <= stage.scroll[1]) {
+    for (const stage of computedStages) {
+        if (scrollProgress >= stage.startProgress && scrollProgress <= stage.endProgress) {
             const uniformRange = stage.uniforms?.[uniformName]
             if (uniformRange) {
-                // 計算在這個階段內的進度
-                const stageProgress = (scrollProgress - stage.scroll[0]) /
-                    (stage.scroll[1] - stage.scroll[0])
-                // 線性插值
+                const stageProgress = (scrollProgress - stage.startProgress) /
+                    (stage.endProgress - stage.startProgress)
                 return uniformRange[0] + stageProgress * (uniformRange[1] - uniformRange[0])
             }
         }
@@ -91,10 +128,17 @@ export function getUniformValue(
  * 計算當前階段名稱
  */
 export function getCurrentStageName(scrollProgress: number): string {
-    for (const stage of scrollConfig.stages) {
-        if (scrollProgress >= stage.scroll[0] && scrollProgress <= stage.scroll[1]) {
+    for (const stage of computedStages) {
+        if (scrollProgress >= stage.startProgress && scrollProgress <= stage.endProgress) {
             return stage.name
         }
     }
-    return scrollProgress < 0.5 ? 'liquid' : 'rgbGlow'
+    return scrollProgress < 0.5 ? 'liquid' : '3dGlass'
+}
+
+/**
+ * 獲取某個階段的信息
+ */
+export function getStageInfo(stageName: string): ComputedStage | undefined {
+    return computedStages.find(s => s.name === stageName)
 }

@@ -6,6 +6,8 @@ export interface ShaderConfig {
     // 彈跳效果
     bounceStrength: number
     bounceHorizontal: number
+    springStiffness: number
+    springDamping: number
 
     // 材質轉換
     glassOpacity: number
@@ -29,6 +31,8 @@ export function useShaderControls(): ShaderConfig {
     const bounce = useControls('彈跳效果', {
         bounceStrength: { value: 3.5, min: 0, max: 10, step: 0.1 },
         bounceHorizontal: { value: 0.5, min: 0, max: 2, step: 0.1 },
+        springStiffness: { value: 90, min: 10, max: 300, step: 10 },
+        springDamping: { value: 5, min: 1, max: 40, step: 1 },
     })
 
     const material = useControls('材質轉換', {

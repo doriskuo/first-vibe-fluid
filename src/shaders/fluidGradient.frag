@@ -171,6 +171,19 @@ void main() {
   float mouseInfluence = exp(-mouseDist * 4.0) * 0.15;
   distortedUv += normalize(uvAspect - mouseUv + 0.001) * mouseInfluence * sin(time * 3.0 + mouseDist * 10.0);
   
+  // ============ JELLY INERTIA (Internal Fluid) ============
+  // Calculate overshoot early to affect fluid pattern
+  float overshoot = uScrollProgress - 1.0;
+  float safeOvershoot = clamp(overshoot, -0.15, 0.15);
+  
+  // Fluid follows the bounce (y-axis displacement)
+  // When dropping (overshoot > 0), fluid lags up? Or moves with it?
+  // Let's make it move WITH the bounce to look like contained liquid.
+  // overshoot > 0 (down) -> move UV up (content down)
+  // Apply mostly to the bottom to feel "heavy"
+  float fluidInertiaMask = smoothstep(0.2, -0.3, uvAspect.y);
+  distortedUv.y -= safeOvershoot * uBounceStrength * 0.15 * fluidInertiaMask;
+  
   // ============ INTERNAL WOBBLE ON MORPH ============
   // Clamp scroll for shape effects (scrollValue can go to 1.5 for material)
   float clampedScroll = clamp(uScrollProgress, 0.0, 1.0);
@@ -261,22 +274,32 @@ void main() {
   // Calculate SDF for Teardrop, centered
   vec2 dropUV = uvAspect;
   
-  // ============ GLOBAL BOUNCE (Framer Motion) ============
-  // If uScrollProgress > 1.0 (Overshoot), we apply a global "Jelly Scale".
-  // This affects the coordinate space of the DROP only.
-  float overshoot = uScrollProgress - 1.0;
-  // CRITICAL: Clamp overshoot to prevent shape distortion (scrollValue goes to 1.5)
-  overshoot = clamp(overshoot, -0.12, 0.12);
+  // ============ JELLY SHAPE BOUNCE ============
+  // Top fixed, Bottom behaves like jelly (Volume Preserving)
   
-  // Only apply bounce when transitioning to 1.0, not during material phase
-  if (clampedScroll > 0.95 && uScrollProgress < 1.15 && abs(overshoot) > 0.001) {
-      // Squash and Stretch: use Leva-controlled values
-      float sy = 1.0 + overshoot * uBounceStrength; 
-      float sx = 1.0 - overshoot * uBounceHorizontal;
+  // We use the same overshoot calculated above (or recalc if simpler scope-wise)
+  // To avoid scope issues if above chunk fails or scope is weird:
+  float bounceSignal = uScrollProgress - 1.0;
+  bounceSignal = clamp(bounceSignal, -0.15, 0.15);
+  
+  // Only apply when settling
+  if (abs(bounceSignal) > 0.001 && uScrollProgress > 0.9) {
+      // Create Gradient Mask: 0 at Top (y=0.15), 1 at Bottom (y=-0.25)
+      // This ensures the "neck" and "top" never move.
+      float jellyMask = smoothstep(0.15, -0.3, dropUV.y);
       
-      // Apply Scale (no rotation - just up/down bounce)
-      dropUV.y *= sy;
-      dropUV.x *= sx;
+      // 1. Vertical Stretch (Gravity pull)
+      // When overshoot > 0 (momentum down), we pull bottom down.
+      // UV modification: to move pixel DOWN, we subtract from Y.
+      float yStretch = bounceSignal * uBounceStrength * 0.4 * jellyMask;
+      dropUV.y -= yStretch;
+      
+      // 2. Horizontal Squash (Volume Conservation)
+      // When stretched vertically (overshoot > 0), it should get thinner (squash).
+      // Thinner = Scale UV UP.
+      // Scale factor > 1.0.
+      float xSquash = 1.0 + bounceSignal * uBounceStrength * 0.2 * jellyMask;
+      dropUV.x *= xSquash;
   }
   
   // Teardrop SDF

@@ -16,8 +16,13 @@ function FullscreenFluid() {
   // Leva controls for real-time parameter adjustment
   const shaderConfig = useShaderControls()
 
-  // New scroll animation hook (replaces hand-written scroll listener)
-  const { springProgress } = useScrollAnimation()
+  // New scroll animation hook with dynamic physics config
+  const { springProgress } = useScrollAnimation({
+    springConfig: {
+      stiffness: shaderConfig.springStiffness,
+      damping: shaderConfig.springDamping
+    }
+  })
 
   // Mouse tracking for fluid interaction
   const mousePos = useRef({ x: 0.5, y: 0.5 })

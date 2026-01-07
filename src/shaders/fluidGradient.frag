@@ -326,23 +326,38 @@ void main() {
   float edgeGlow = smoothstep(blobRadius, blobRadius - 0.15, dist);
   finalColor += rainbowColor * 0.2 * (1.0 - edgeGlow) * blob;
   
-  // ============ NEON RIM LIGHT (Material Transition) ============
+  // ============ GLASS MATERIAL EFFECTS (Material Transition) ============
   if (uMaterialProgress > 0.01) {
-    // Use Leva-controlled colors
+    // --- 1. Fresnel Rim Light (Edge glow based on view angle approximation) ---
+    // Using distance from center as a proxy for view angle
+    float fresnelBase = 1.0 - smoothstep(0.0, 0.15, abs(finalSDF));
+    float fresnel = pow(fresnelBase, 3.0) * uMaterialProgress;
+    vec3 fresnelColor = vec3(0.9, 0.95, 1.0); // Cool white
+    finalColor += fresnelColor * fresnel * 0.6;
+    
+    // --- 2. Enhanced Specular for Glass ---
+    // Add sharper, stronger specular highlights as we transition to glass
+    float glassSpecular = pow(max(0.0, specular), 5.0) * uMaterialProgress * 1.5;
+    finalColor += vec3(1.0) * glassSpecular;
+    
+    // --- 3. Color Desaturation (Rainbow -> Clear Glass) ---
+    float gray = dot(finalColor, vec3(0.299, 0.587, 0.114));
+    finalColor = mix(finalColor, vec3(gray) * 1.1, uMaterialProgress * 0.65);
+    
+    // --- 4. Existing Neon Rim Light (keep for accent) ---
     vec3 neonColor = mix(
       mix(uCyanColor, uPinkColor, fract(h1 * 2.0)),
       uLavenderColor,
       0.3
     );
     
-    // Rim light with Leva-controlled intensity
     float edgeDetect = smoothstep(0.003, 0.012, finalSDF) * smoothstep(0.025, 0.012, finalSDF);
     float rimIntensity = edgeDetect * uMaterialProgress * uRimLightStrength;
     finalColor += neonColor * rimIntensity;
     
     // Glass edge outline - clean light blue-white (not gray)
     float darkEdge = smoothstep(0.0, 0.006, finalSDF) * smoothstep(0.014, 0.006, finalSDF);
-    vec3 glassEdgeColor = vec3(0.75, 0.82, 0.9);  // Clean cool blue-white
+    vec3 glassEdgeColor = vec3(0.75, 0.82, 0.9);
     finalColor = mix(finalColor, glassEdgeColor, darkEdge * uMaterialProgress * uDarkEdgeStrength);
   }
   

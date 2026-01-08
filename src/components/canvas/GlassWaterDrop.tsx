@@ -119,7 +119,7 @@ export default function GlassWaterDrop() {
                     ref={meshRef}
                     geometry={geometry}
                     visible={false}
-                    scale={[0.12, 0.12, 0.12]}  // 匹配 2D 水滴大小
+                    scale={[0.15, 0.15, 0.15]}  // 匹配 2D 水滴大小
                 >
                     <MeshTransmissionMaterial
                         ref={materialRef}

@@ -111,14 +111,22 @@ export default function GlassWaterDrop() {
 
         const { scrollValue } = getState()
 
-        const fadeInStart = 2.1
-        const fadeInEnd = 2.4
-        const opacity = Math.min(Math.max((scrollValue - fadeInStart) / (fadeInEnd - fadeInStart), 0), 1)
+        // 3D 水滴淡入（使用 smoothstep 曲線，更平滑）
+        const fadeInStart = 2.0  // 提早開始
+        const fadeInEnd = 2.5    // 延後結束，過渡更長
 
-        meshRef.current.visible = opacity > 0.01
+        // 線性進度
+        const t = Math.min(Math.max((scrollValue - fadeInStart) / (fadeInEnd - fadeInStart), 0), 1)
+
+        // smoothstep 曲線（避免閃爍）
+        const opacity = t * t * (3 - 2 * t)
+
+        // 只有當 opacity 超過 0.15 才顯示（避免低透明度閃爍）
+        meshRef.current.visible = opacity > 0.15
 
         if (materialRef.current) {
-            materialRef.current.opacity = opacity
+            // 映射到 0.15-1.0 範圍，避免低透明度
+            materialRef.current.opacity = meshRef.current.visible ? 0.15 + opacity * 0.85 : 0
         }
 
         // 套用三軸旋轉

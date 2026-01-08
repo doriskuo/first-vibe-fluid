@@ -16,26 +16,57 @@ export default function GlassWaterDrop() {
     const materialRef = useRef<any>(null)
     const { getState } = useScrollAnimation()
 
-    // 建立水滴 Geometry - 使用正確的參數式公式
+    // 建立水滴 Geometry - 完全匹配 2D shader 的 sdRoundedCone
+    // 2D 參數: r1 = r (底部半徑), r2 = 0.001 (頂點), h = r * 1.8
     const geometry = useMemo(() => {
         const points: THREE.Vector2[] = []
-        const segments = 80
 
-        for (let i = 0; i <= segments; i++) {
-            const t = i / segments
-            const angle = t * Math.PI
+        // 2D shader 的比例
+        const r1 = 1.0       // 底部半徑
+        const r2 = 0.02      // 頂部半徑（幾乎是點）
+        const h = r1 * 1.8   // 高度
 
-            // 經典水滴參數式公式
-            // x = sin(angle) * (1 - cos(angle))
-            // y = cos(angle)
-            // 這會產生底部圓潤、頂部尖的水滴
-            const widthFactor = 1.0  // 寬度縮放
-            const heightScale = 1.8  // 高度縮放
+        // sdRoundedCone 形狀：
+        // 1. 底部半圓（圓心在 y=0）
+        // 2. 直線斜邊（從 r1 收窄到 r2）
+        // 3. 頂部小圓弧
 
-            const x = Math.sin(angle) * (1 - Math.cos(angle)) * widthFactor
-            const y = Math.cos(angle) * heightScale
+        // 計算錐形斜邊的角度
+        const b = (r1 - r2) / h
+        const a = Math.sqrt(1 - b * b)
 
+        // 1. 底部半圓 (從 -90° 到切線角度)
+        const tangentAngle = Math.atan2(b, a)
+        const bottomSegments = 25
+
+        for (let i = 0; i <= bottomSegments; i++) {
+            const angle = -Math.PI / 2 + (Math.PI / 2 + tangentAngle) * (i / bottomSegments)
+            const x = r1 * Math.cos(angle)
+            const y = r1 * Math.sin(angle)
             points.push(new THREE.Vector2(x, y))
+        }
+
+        // 2. 直線斜邊（從切點到頂部切點）
+        const straightSegments = 20
+        const startX = r1 * Math.cos(tangentAngle)
+        const startY = r1 * Math.sin(tangentAngle)
+        const endX = r2 * Math.cos(tangentAngle)
+        const endY = h - r2 * Math.sin(tangentAngle)
+
+        for (let i = 1; i <= straightSegments; i++) {
+            const t = i / straightSegments
+            const x = startX + (endX - startX) * t
+            const y = startY + (endY - startY) * t
+            points.push(new THREE.Vector2(x, y))
+        }
+
+        // 3. 頂部小圓弧 (收尖)
+        const topSegments = 10
+        for (let i = 1; i <= topSegments; i++) {
+            const angle = tangentAngle - tangentAngle * (i / topSegments)
+            const x = r2 * Math.cos(angle)
+            const y = h - r2 + r2 * Math.sin(angle)
+            if (x >= 0) points.push(new THREE.Vector2(Math.max(x, 0.001), y))
         }
 
         const geo = new THREE.LatheGeometry(points, 64)

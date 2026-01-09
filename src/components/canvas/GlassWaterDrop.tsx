@@ -13,6 +13,8 @@ import { useScrollAnimation } from '@/hooks/useScrollAnimation'
 export default function GlassWaterDrop() {
     const meshRef = useRef<THREE.Mesh>(null)
     const materialRef = useRef<any>(null)
+    const coreGroupRef = useRef<THREE.Group>(null)  // 內部機械結構
+    const ringRef = useRef<THREE.Mesh>(null)        // 霓虹光環
     const { getState } = useScrollAnimation()
 
     // 拖曳旋轉狀態 (X, Y, Z 三軸)
@@ -132,6 +134,11 @@ export default function GlassWaterDrop() {
         // 只有當 opacity 超過 0.15 才顯示（避免低透明度閃爍）
         meshRef.current.visible = opacity > 0.15
 
+        // 內部結構同步顯示
+        if (coreGroupRef.current) {
+            coreGroupRef.current.visible = meshRef.current.visible
+        }
+
         if (materialRef.current) {
             // 映射到 0.15-1.0 範圍，避免低透明度
             materialRef.current.opacity = meshRef.current.visible ? 0.15 + opacity * 0.85 : 0
@@ -194,6 +201,15 @@ export default function GlassWaterDrop() {
             meshRef.current.rotation.x = rotation.x
             meshRef.current.rotation.y = rotation.y
             meshRef.current.rotation.z = rotation.z
+
+            // 內部結構同步旋轉
+            if (coreGroupRef.current) {
+                coreGroupRef.current.rotation.copy(meshRef.current.rotation)
+                // 光環自轉
+                if (ringRef.current) {
+                    ringRef.current.rotation.z += 0.02
+                }
+            }
         }
     })
 
@@ -241,6 +257,69 @@ export default function GlassWaterDrop() {
                     opacity={0}
                 />
             </mesh>
+
+            {/* 內部發光結構 - 線條+光暈風格 */}
+            <group ref={coreGroupRef} scale={[0.15, 0.15, 0.15]}>
+                {/* 主光環 - 水平 */}
+                <mesh ref={ringRef} rotation={[Math.PI / 2, 0, 0]}>
+                    <torusGeometry args={[0.5, 0.015, 16, 64]} />
+                    <meshStandardMaterial
+                        color="#000000"
+                        emissive="#00ffff"
+                        emissiveIntensity={6}
+                        transparent
+                        opacity={0.9}
+                    />
+                </mesh>
+
+                {/* 第二光環 - 傾斜 */}
+                <mesh rotation={[Math.PI / 3, Math.PI / 4, 0]}>
+                    <torusGeometry args={[0.4, 0.01, 16, 64]} />
+                    <meshStandardMaterial
+                        color="#000000"
+                        emissive="#ff00ff"
+                        emissiveIntensity={4}
+                        transparent
+                        opacity={0.8}
+                    />
+                </mesh>
+
+                {/* 第三光環 - 另一角度 */}
+                <mesh rotation={[Math.PI / 6, -Math.PI / 3, Math.PI / 4]}>
+                    <torusGeometry args={[0.35, 0.008, 16, 64]} />
+                    <meshStandardMaterial
+                        color="#000000"
+                        emissive="#00ffaa"
+                        emissiveIntensity={5}
+                        transparent
+                        opacity={0.7}
+                    />
+                </mesh>
+
+                {/* 發光線條 - 垂直軸 */}
+                <mesh>
+                    <cylinderGeometry args={[0.005, 0.005, 1.2, 8]} />
+                    <meshStandardMaterial
+                        color="#000000"
+                        emissive="#00ffff"
+                        emissiveIntensity={8}
+                    />
+                </mesh>
+
+                {/* 發光線條 - 水平軸 */}
+                <mesh rotation={[0, 0, Math.PI / 2]}>
+                    <cylinderGeometry args={[0.005, 0.005, 0.8, 8]} />
+                    <meshStandardMaterial
+                        color="#000000"
+                        emissive="#ff00ff"
+                        emissiveIntensity={6}
+                    />
+                </mesh>
+
+                {/* 柔和光暈 - 中心點光源 */}
+                <pointLight position={[0, 0, 0]} intensity={3} distance={1.5} color="#00ffff" />
+                <pointLight position={[0, 0.2, 0]} intensity={2} distance={1} color="#ff00ff" />
+            </group>
         </>
     )
 }

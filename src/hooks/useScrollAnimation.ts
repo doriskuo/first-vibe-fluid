@@ -68,19 +68,9 @@ export function useScrollAnimation(options: UseScrollAnimationOptions = {}) {
                 // 乘以 multiplier（與舊系統相容）
                 const scaledProgress = rawProgress * scrollConfig.scrollMultiplier
 
-                // === 彈跳時機修正 ===
-                // 只在 bounce 階段 (rawProgress > 0.28) 使用 spring
-                // morph 階段使用線性滾動
-                const bounceThreshold = 0.28
-
-                if (useSpringPhysics && rawProgress > bounceThreshold) {
-                    // Bounce 階段：使用 spring 產生彈跳效果
-                    springProgress.set(scaledProgress)
-                } else {
-                    // Morph 階段：線性更新，不要彈跳
-                    // 直接設定 spring 的目標值，但用高阻尼讓它平滑
-                    springProgress.jump(scaledProgress)  // 立即跳到目標值，無彈跳
-                }
+                // === 彈跳效果已停用 ===
+                // 改為線性滾動，避免超調導致的閃爍問題
+                springProgress.jump(scaledProgress)  // 立即跳到目標值，無彈跳
 
                 // 更新 state ref（用於非 spring 讀取）
                 stateRef.current.scrollProgress = rawProgress

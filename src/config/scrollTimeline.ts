@@ -64,6 +64,13 @@ export const stages: ScrollStage[] = [
             u3DOpacity: [0.0, 1.0],
         },
     },
+    {
+        name: 'shapeMorph',
+        durationVh: 500,  // 水滴 → VR 耳機形狀變形
+        uniforms: {
+            uShapeMorph: [0.0, 1.0],
+        },
+    },
 ]
 
 // 自動計算總頁面高度

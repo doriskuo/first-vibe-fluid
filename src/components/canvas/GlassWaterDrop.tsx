@@ -20,8 +20,13 @@ export default function GlassWaterDrop() {
     const [rotation, setRotation] = useState({ x: 0, y: 0, z: 0 })
     const lastPointer = useRef({ x: 0, y: 0 })
 
-    // 建立水滴 Geometry
-    const geometry = useMemo(() => {
+    // VR 耳機形狀參數
+    const vrParams = useMemo(() => ({
+        w: 2.5, h: 0.8, d: 1.2, radius: 0.15
+    }), [])
+
+    // 建立水滴 Geometry 並保存原始頂點
+    const { geometry, originalPositions } = useMemo(() => {
         const points: THREE.Vector2[] = []
 
         const r1 = 1.0
@@ -69,7 +74,10 @@ export default function GlassWaterDrop() {
         geo.boundingBox?.getCenter(center)
         geo.translate(-center.x, -center.y, -center.z)
 
-        return geo
+        // 保存原始水滴頂點座標
+        const origPos = geo.attributes.position.array.slice() as Float32Array
+
+        return { geometry: geo, originalPositions: origPos }
     }, [])
 
     // 全域滑鼠事件（讓拖曳更流暢）
@@ -127,6 +135,58 @@ export default function GlassWaterDrop() {
         if (materialRef.current) {
             // 映射到 0.15-1.0 範圍，避免低透明度
             materialRef.current.opacity = meshRef.current.visible ? 0.15 + opacity * 0.85 : 0
+        }
+
+        // === 形狀變形（2.4-2.9，對應 shapeMorph 階段）===
+        const morphStart = 2.4
+        const morphEnd = 2.9
+        const positions = meshRef.current.geometry.attributes.position
+
+        if (scrollValue >= morphStart && meshRef.current.visible) {
+            const morphT = Math.min((scrollValue - morphStart) / (morphEnd - morphStart), 1)
+            const morphProgress = morphT * morphT * (3 - 2 * morphT)  // smoothstep
+
+            const vr = vrParams
+
+            for (let i = 0; i < positions.count; i++) {
+                // 原始水滴座標
+                const dropX = originalPositions[i * 3]
+                const dropY = originalPositions[i * 3 + 1]
+                const dropZ = originalPositions[i * 3 + 2]
+
+                // VR 耳機：擠壓成橫向圓角長方體
+                const vrX = Math.sign(dropX) * Math.min(Math.abs(dropX) * vr.w, vr.w - vr.radius) + dropX * vr.radius * 0.5
+                const vrY = Math.sign(dropY) * Math.min(Math.abs(dropY) * vr.h, vr.h - vr.radius) + dropY * vr.radius * 0.5
+                const vrZ = Math.sign(dropZ) * Math.min(Math.abs(dropZ) * vr.d, vr.d - vr.radius) + dropZ * vr.radius * 0.5
+
+                // 混合水滴和 VR 形狀
+                const finalX = THREE.MathUtils.lerp(dropX, vrX, morphProgress)
+                const finalY = THREE.MathUtils.lerp(dropY, vrY, morphProgress)
+                const finalZ = THREE.MathUtils.lerp(dropZ, vrZ, morphProgress)
+
+                positions.setX(i, finalX)
+                positions.setY(i, finalY)
+                positions.setZ(i, finalZ)
+            }
+            positions.needsUpdate = true
+            meshRef.current.geometry.computeVertexNormals()
+        } else if (meshRef.current.visible) {
+            // 未到變形階段，確保頂點是原始水滴形狀
+            let needsUpdate = false
+            for (let i = 0; i < positions.count; i++) {
+                const currentX = positions.getX(i)
+                const originalX = originalPositions[i * 3]
+                if (Math.abs(currentX - originalX) > 0.001) {
+                    positions.setX(i, originalPositions[i * 3])
+                    positions.setY(i, originalPositions[i * 3 + 1])
+                    positions.setZ(i, originalPositions[i * 3 + 2])
+                    needsUpdate = true
+                }
+            }
+            if (needsUpdate) {
+                positions.needsUpdate = true
+                meshRef.current.geometry.computeVertexNormals()
+            }
         }
 
         // 套用三軸旋轉

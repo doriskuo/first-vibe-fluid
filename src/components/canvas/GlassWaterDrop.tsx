@@ -141,8 +141,8 @@ export default function GlassWaterDrop() {
         // smoothstep 曲線（避免閃爍）
         const opacity = t * t * (3 - 2 * t)
 
-        // 只有當 opacity 超過 0.15 才顯示（避免低透明度閃爍）
-        meshRef.current.visible = opacity > 0.15
+        // 降低閾值，讓 3D 更早開始淡入（更平滑的過渡）
+        meshRef.current.visible = opacity > 0.05
 
         // 內部結構同步顯示
         if (coreGroupRef.current) {
@@ -150,8 +150,8 @@ export default function GlassWaterDrop() {
         }
 
         if (materialRef.current) {
-            // 映射到 0.15-1.0 範圍，避免低透明度
-            materialRef.current.opacity = meshRef.current.visible ? 0.15 + opacity * 0.85 : 0
+            // 直接使用 opacity，不再映射到 0.15-1.0
+            materialRef.current.opacity = meshRef.current.visible ? opacity : 0
         }
 
         // === 形狀變形（2.4-2.9，對應 shapeMorph 階段）===
@@ -322,27 +322,59 @@ export default function GlassWaterDrop() {
                     />
                 </mesh>
 
-                {/* 發光線條 - 垂直軸 */}
-                <mesh>
-                    <cylinderGeometry args={[0.005, 0.005, 1.2, 8]} />
-                    <meshStandardMaterial
-                        ref={line1MatRef}
-                        color="#000000"
-                        emissive="#00ffff"
-                        emissiveIntensity={5}
-                    />
-                </mesh>
+                {/* 發光線條 - 垂直軸（主線 + 光暈層）*/}
+                <group>
+                    {/* 核心線 */}
+                    <mesh>
+                        <cylinderGeometry args={[0.008, 0.008, 1.2, 8]} />
+                        <meshStandardMaterial
+                            ref={line1MatRef}
+                            color="#000000"
+                            emissive="#00ffff"
+                            emissiveIntensity={5}
+                            transparent
+                            opacity={0.9}
+                        />
+                    </mesh>
+                    {/* 光暈層 */}
+                    <mesh>
+                        <cylinderGeometry args={[0.025, 0.025, 1.2, 8]} />
+                        <meshStandardMaterial
+                            color="#000000"
+                            emissive="#00ffff"
+                            emissiveIntensity={2}
+                            transparent
+                            opacity={0.3}
+                        />
+                    </mesh>
+                </group>
 
-                {/* 發光線條 - 水平軸 */}
-                <mesh rotation={[0, 0, Math.PI / 2]}>
-                    <cylinderGeometry args={[0.005, 0.005, 0.8, 8]} />
-                    <meshStandardMaterial
-                        ref={line2MatRef}
-                        color="#000000"
-                        emissive="#ff00ff"
-                        emissiveIntensity={4}
-                    />
-                </mesh>
+                {/* 發光線條 - 水平軸（主線 + 光暈層）*/}
+                <group rotation={[0, 0, Math.PI / 2]}>
+                    {/* 核心線 */}
+                    <mesh>
+                        <cylinderGeometry args={[0.008, 0.008, 0.8, 8]} />
+                        <meshStandardMaterial
+                            ref={line2MatRef}
+                            color="#000000"
+                            emissive="#ff00ff"
+                            emissiveIntensity={4}
+                            transparent
+                            opacity={0.9}
+                        />
+                    </mesh>
+                    {/* 光暈層 */}
+                    <mesh>
+                        <cylinderGeometry args={[0.025, 0.025, 0.8, 8]} />
+                        <meshStandardMaterial
+                            color="#000000"
+                            emissive="#ff00ff"
+                            emissiveIntensity={1.5}
+                            transparent
+                            opacity={0.25}
+                        />
+                    </mesh>
+                </group>
 
                 {/* 柔和光暈 - 中心點光源 */}
                 <pointLight ref={light1Ref} position={[0, 0, 0]} intensity={2} distance={1.5} color="#00ffff" />

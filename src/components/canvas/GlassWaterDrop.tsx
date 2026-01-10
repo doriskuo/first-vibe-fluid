@@ -15,6 +15,16 @@ export default function GlassWaterDrop() {
     const materialRef = useRef<any>(null)
     const coreGroupRef = useRef<THREE.Group>(null)  // 內部機械結構
     const ringRef = useRef<THREE.Mesh>(null)        // 霓虹光環
+
+    // 發光材質 refs（用於動態調整亮度）
+    const ring1MatRef = useRef<THREE.MeshStandardMaterial>(null)
+    const ring2MatRef = useRef<THREE.MeshStandardMaterial>(null)
+    const ring3MatRef = useRef<THREE.MeshStandardMaterial>(null)
+    const line1MatRef = useRef<THREE.MeshStandardMaterial>(null)
+    const line2MatRef = useRef<THREE.MeshStandardMaterial>(null)
+    const light1Ref = useRef<THREE.PointLight>(null)
+    const light2Ref = useRef<THREE.PointLight>(null)
+
     const { getState } = useScrollAnimation()
 
     // 拖曳旋轉狀態 (X, Y, Z 三軸)
@@ -209,6 +219,19 @@ export default function GlassWaterDrop() {
                 if (ringRef.current) {
                     ringRef.current.rotation.z += 0.02
                 }
+
+                // 計算變形進度用於光暈強度
+                const morphT = Math.min(Math.max((scrollValue - 2.4) / 0.5, 0), 1)
+                const glowMultiplier = 1 + morphT * 2  // 1x → 3x
+
+                // 動態調整發光強度
+                if (ring1MatRef.current) ring1MatRef.current.emissiveIntensity = 4 * glowMultiplier
+                if (ring2MatRef.current) ring2MatRef.current.emissiveIntensity = 3 * glowMultiplier
+                if (ring3MatRef.current) ring3MatRef.current.emissiveIntensity = 3.5 * glowMultiplier
+                if (line1MatRef.current) line1MatRef.current.emissiveIntensity = 5 * glowMultiplier
+                if (line2MatRef.current) line2MatRef.current.emissiveIntensity = 4 * glowMultiplier
+                if (light1Ref.current) light1Ref.current.intensity = 2 + morphT * 4
+                if (light2Ref.current) light2Ref.current.intensity = 1.5 + morphT * 3
             }
         }
     })
@@ -264,9 +287,10 @@ export default function GlassWaterDrop() {
                 <mesh ref={ringRef} rotation={[Math.PI / 2, 0, 0]}>
                     <torusGeometry args={[0.5, 0.015, 16, 64]} />
                     <meshStandardMaterial
+                        ref={ring1MatRef}
                         color="#000000"
                         emissive="#00ffff"
-                        emissiveIntensity={6}
+                        emissiveIntensity={4}
                         transparent
                         opacity={0.9}
                     />
@@ -276,9 +300,10 @@ export default function GlassWaterDrop() {
                 <mesh rotation={[Math.PI / 3, Math.PI / 4, 0]}>
                     <torusGeometry args={[0.4, 0.01, 16, 64]} />
                     <meshStandardMaterial
+                        ref={ring2MatRef}
                         color="#000000"
                         emissive="#ff00ff"
-                        emissiveIntensity={4}
+                        emissiveIntensity={3}
                         transparent
                         opacity={0.8}
                     />
@@ -288,9 +313,10 @@ export default function GlassWaterDrop() {
                 <mesh rotation={[Math.PI / 6, -Math.PI / 3, Math.PI / 4]}>
                     <torusGeometry args={[0.35, 0.008, 16, 64]} />
                     <meshStandardMaterial
+                        ref={ring3MatRef}
                         color="#000000"
                         emissive="#00ffaa"
-                        emissiveIntensity={5}
+                        emissiveIntensity={3.5}
                         transparent
                         opacity={0.7}
                     />
@@ -300,9 +326,10 @@ export default function GlassWaterDrop() {
                 <mesh>
                     <cylinderGeometry args={[0.005, 0.005, 1.2, 8]} />
                     <meshStandardMaterial
+                        ref={line1MatRef}
                         color="#000000"
                         emissive="#00ffff"
-                        emissiveIntensity={8}
+                        emissiveIntensity={5}
                     />
                 </mesh>
 
@@ -310,15 +337,16 @@ export default function GlassWaterDrop() {
                 <mesh rotation={[0, 0, Math.PI / 2]}>
                     <cylinderGeometry args={[0.005, 0.005, 0.8, 8]} />
                     <meshStandardMaterial
+                        ref={line2MatRef}
                         color="#000000"
                         emissive="#ff00ff"
-                        emissiveIntensity={6}
+                        emissiveIntensity={4}
                     />
                 </mesh>
 
                 {/* 柔和光暈 - 中心點光源 */}
-                <pointLight position={[0, 0, 0]} intensity={3} distance={1.5} color="#00ffff" />
-                <pointLight position={[0, 0.2, 0]} intensity={2} distance={1} color="#ff00ff" />
+                <pointLight ref={light1Ref} position={[0, 0, 0]} intensity={2} distance={1.5} color="#00ffff" />
+                <pointLight ref={light2Ref} position={[0, 0.2, 0]} intensity={1.5} distance={1} color="#ff00ff" />
             </group>
         </>
     )

@@ -206,9 +206,16 @@ export default function GlassWaterDrop() {
             }
         }
 
-        // 套用三軸旋轉
+        // 套用三軸旋轉（VR 變形後漸進往前傾）
+        // 計算當前變形進度
+        const currentMorphT = Math.min(Math.max((scrollValue - 2.4) / 0.5, 0), 1)
+        const currentMorphProgress = currentMorphT * currentMorphT * (3 - 2 * currentMorphT)
+
+        // 只有變形後才往前傾 90 度
+        const xOffset = currentMorphProgress * (Math.PI / 2)
+
         if (meshRef.current.visible) {
-            meshRef.current.rotation.x = rotation.x
+            meshRef.current.rotation.x = rotation.x + xOffset
             meshRef.current.rotation.y = rotation.y
             meshRef.current.rotation.z = rotation.z
 

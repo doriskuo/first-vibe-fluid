@@ -5,6 +5,7 @@ import { useFrame } from '@react-three/fiber'
 import { MeshTransmissionMaterial, Environment } from '@react-three/drei'
 import * as THREE from 'three'
 import { useScrollAnimation } from '@/hooks/useScrollAnimation'
+import WatchGear from './WatchGear'
 
 /**
  * GlassWaterDrop - 3D 玻璃水滴
@@ -24,6 +25,14 @@ export default function GlassWaterDrop() {
     const line2MatRef = useRef<THREE.MeshStandardMaterial>(null)
     const light1Ref = useRef<THREE.PointLight>(null)
     const light2Ref = useRef<THREE.PointLight>(null)
+
+    // 精密齒輪 refs
+    const gearGroupRef = useRef<THREE.Group>(null)
+    const gear1Ref = useRef<THREE.Group>(null)
+    const gear2Ref = useRef<THREE.Group>(null)
+    const gear3Ref = useRef<THREE.Group>(null)
+    const gear4Ref = useRef<THREE.Group>(null)
+    const gear5Ref = useRef<THREE.Group>(null)
 
     const { getState } = useScrollAnimation()
 
@@ -152,6 +161,13 @@ export default function GlassWaterDrop() {
         if (materialRef.current) {
             // 直接使用 opacity，不再映射到 0.15-1.0
             materialRef.current.opacity = meshRef.current.visible ? opacity : 0
+
+            // VR 變形時降低折射扭曲（讓內部齒輪更清晰）
+            const morphT = Math.min(Math.max((scrollValue - 2.4) / 0.5, 0), 1)
+            materialRef.current.distortion = THREE.MathUtils.lerp(0.3, 0, morphT)
+            materialRef.current.distortionScale = THREE.MathUtils.lerp(0.2, 0, morphT)
+            materialRef.current.thickness = THREE.MathUtils.lerp(3.0, 0.5, morphT)
+            materialRef.current.chromaticAberration = THREE.MathUtils.lerp(0.1, 0, morphT)
         }
 
         // === 形狀變形（2.4-2.9，對應 shapeMorph 階段）===
@@ -222,23 +238,20 @@ export default function GlassWaterDrop() {
             // 內部結構同步旋轉
             if (coreGroupRef.current) {
                 coreGroupRef.current.rotation.copy(meshRef.current.rotation)
-                // 光環自轉
-                if (ringRef.current) {
-                    ringRef.current.rotation.z += 0.02
+
+                // 計算變形進度
+                const morphT = Math.min(Math.max((scrollValue - 2.4) / 0.5, 0), 1)
+
+                // VR 階段隱藏賽博朋克光暈（讓齒輪更清晰）
+                if (morphT > 0.3) {
+                    coreGroupRef.current.visible = false
                 }
 
-                // 計算變形進度用於光暈強度
-                const morphT = Math.min(Math.max((scrollValue - 2.4) / 0.5, 0), 1)
-                const glowMultiplier = 1 + morphT * 2  // 1x → 3x
-
-                // 動態調整發光強度
-                if (ring1MatRef.current) ring1MatRef.current.emissiveIntensity = 4 * glowMultiplier
-                if (ring2MatRef.current) ring2MatRef.current.emissiveIntensity = 3 * glowMultiplier
-                if (ring3MatRef.current) ring3MatRef.current.emissiveIntensity = 3.5 * glowMultiplier
-                if (line1MatRef.current) line1MatRef.current.emissiveIntensity = 5 * glowMultiplier
-                if (line2MatRef.current) line2MatRef.current.emissiveIntensity = 4 * glowMultiplier
-                if (light1Ref.current) light1Ref.current.intensity = 2 + morphT * 4
-                if (light2Ref.current) light2Ref.current.intensity = 1.5 + morphT * 3
+                // 齒輪只在 VR 轉正後才出現（morphT = 1）+ 跟著玻璃體旋轉
+                if (gearGroupRef.current) {
+                    gearGroupRef.current.visible = morphT >= 1 && meshRef.current.visible
+                    gearGroupRef.current.rotation.copy(meshRef.current.rotation)
+                }
             }
         }
     })
@@ -386,6 +399,55 @@ export default function GlassWaterDrop() {
                 {/* 柔和光暈 - 中心點光源 */}
                 <pointLight ref={light1Ref} position={[0, 0, 0]} intensity={2} distance={1.5} color="#00ffff" />
                 <pointLight ref={light2Ref} position={[0, 0.2, 0]} intensity={1.5} distance={1} color="#ff00ff" />
+            </group>
+
+            {/* 精密機械錶風格齒輪組 - 銀色，不規則排列 */}
+            <group ref={gearGroupRef} scale={[0.15, 0.15, 0.15]} visible={false}>
+                {/* 左側 - 大齒輪 */}
+                <WatchGear
+                    ref={gear1Ref}
+                    radius={0.35}
+                    teeth={24}
+                    spokes={6}
+                    thickness={0.012}
+                    color="#d4d4d4"
+                    position={[-1.0, 0, 0]}
+                    rotation={[Math.PI / 2, 0, 0]}
+                />
+                {/* 左側 - 小齒輪 (咬合) */}
+                <WatchGear
+                    ref={gear2Ref}
+                    radius={0.18}
+                    teeth={14}
+                    spokes={4}
+                    thickness={0.01}
+                    color="#b8b8b8"
+                    position={[-0.6, 0.25, 0]}
+                    rotation={[Math.PI / 2, 0, 0]}
+                />
+
+                {/* 右側 - 中齒輪 */}
+                <WatchGear
+                    ref={gear3Ref}
+                    radius={0.28}
+                    teeth={20}
+                    spokes={5}
+                    thickness={0.011}
+                    color="#c8c8c8"
+                    position={[1.0, 0, 0]}
+                    rotation={[Math.PI / 2, 0, 0]}
+                />
+                {/* 右側 - 小齒輪 (咬合) */}
+                <WatchGear
+                    ref={gear4Ref}
+                    radius={0.15}
+                    teeth={12}
+                    spokes={3}
+                    thickness={0.009}
+                    color="#a8a8a8"
+                    position={[0.6, -0.2, 0]}
+                    rotation={[Math.PI / 2, 0, 0]}
+                />
             </group>
         </>
     )

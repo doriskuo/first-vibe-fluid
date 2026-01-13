@@ -166,7 +166,7 @@ export default function GlassWaterDrop() {
             const morphT = Math.min(Math.max((scrollValue - 2.4) / 0.5, 0), 1)
             materialRef.current.distortion = THREE.MathUtils.lerp(0.3, 0, morphT)
             materialRef.current.distortionScale = THREE.MathUtils.lerp(0.2, 0, morphT)
-            materialRef.current.thickness = THREE.MathUtils.lerp(3.0, 0.5, morphT)
+            materialRef.current.thickness = THREE.MathUtils.lerp(3.0, 0.1, morphT)  // 更薄讓齒輪清晰
             materialRef.current.chromaticAberration = THREE.MathUtils.lerp(0.1, 0, morphT)
         }
 

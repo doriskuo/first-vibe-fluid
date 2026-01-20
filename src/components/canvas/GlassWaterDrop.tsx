@@ -251,6 +251,23 @@ export default function GlassWaterDrop() {
                 if (gearGroupRef.current) {
                     gearGroupRef.current.visible = morphT >= 1 && meshRef.current.visible
                     gearGroupRef.current.rotation.copy(meshRef.current.rotation)
+
+                    // 齒輪同步旋轉動畫
+                    if (gearGroupRef.current.visible) {
+                        const time = performance.now() * 0.0005  // 緩慢轉動
+
+                        // 左側組：大齒輪(48齒) + 小齒輪(12齒)，比例 4:1
+                        if (gear1Ref.current && gear2Ref.current) {
+                            gear1Ref.current.rotation.z = time
+                            gear2Ref.current.rotation.z = -time * 4  // 反向 + 4倍速
+                        }
+
+                        // 右側組：中齒輪(36齒) + 小齒輪(12齒)，比例 3:1
+                        if (gear3Ref.current && gear4Ref.current) {
+                            gear3Ref.current.rotation.z = -time * 1.2  // 稍快一點
+                            gear4Ref.current.rotation.z = time * 1.2 * 3  // 反向 + 3倍速
+                        }
+                    }
                 }
             }
         }
@@ -402,51 +419,51 @@ export default function GlassWaterDrop() {
                 <pointLight ref={light2Ref} position={[0, 0.2, 0]} intensity={1.5} distance={1} color="#ff00ff" />
             </group>
 
-            {/* 精密機械錶風格齒輪組 - 銀色，不規則排列 */}
+            {/* 精密機械錶風格齒輪組 - 咬合設計 */}
             <group ref={gearGroupRef} scale={[0.15, 0.15, 0.15]} visible={false}>
-                {/* 左側 - 大齒輪 */}
+                {/* 左側組 - 大齒輪 + 小齒輪咬合 */}
+                {/* 大齒輪：48齒, radius=0.4 */}
                 <WatchGear
                     ref={gear1Ref}
-                    radius={0.35}
-                    teeth={24}
+                    radius={0.4}
+                    teeth={48}
                     spokes={6}
-                    thickness={0.012}
-                    color="#808080"
-                    position={[-1.0, 0, 0.1]}
+                    color="#707070"
+                    position={[-0.85, 0, 0.1]}
                     rotation={[Math.PI / 2, 0, 0]}
                 />
-                {/* 左側 - 小齒輪 (咬合) */}
+                {/* 小齒輪：12齒, radius=0.1 咬合大齒輪 */}
+                {/* 中心距 = 0.4 + 0.1 = 0.5 */}
                 <WatchGear
                     ref={gear2Ref}
-                    radius={0.18}
-                    teeth={14}
-                    spokes={4}
-                    thickness={0.01}
+                    radius={0.1}
+                    teeth={12}
+                    spokes={3}
                     color="#808080"
-                    position={[-0.6, 0.25, 0.1]}
+                    position={[-0.85 + 0.5, 0.05, 0.1]}
                     rotation={[Math.PI / 2, 0, 0]}
                 />
 
-                {/* 右側 - 中齒輪 */}
+                {/* 右側組 - 中齒輪 + 小齒輪咬合 */}
+                {/* 中齒輪：36齒, radius=0.3 */}
                 <WatchGear
                     ref={gear3Ref}
-                    radius={0.28}
-                    teeth={20}
+                    radius={0.3}
+                    teeth={36}
                     spokes={5}
-                    thickness={0.011}
-                    color="#808080"
-                    position={[1.0, 0, 0.1]}
+                    color="#707070"
+                    position={[0.85, 0, 0.1]}
                     rotation={[Math.PI / 2, 0, 0]}
                 />
-                {/* 右側 - 小齒輪 (咬合) */}
+                {/* 小齒輪：12齒, radius=0.1 咬合中齒輪 */}
+                {/* 中心距 = 0.3 + 0.1 = 0.4 */}
                 <WatchGear
                     ref={gear4Ref}
-                    radius={0.22}
-                    teeth={14}
-                    spokes={4}
-                    thickness={0.01}
+                    radius={0.1}
+                    teeth={12}
+                    spokes={3}
                     color="#808080"
-                    position={[0.6, -0.2, 0.1]}
+                    position={[0.85 - 0.4, -0.1, 0.1]}
                     rotation={[Math.PI / 2, 0, 0]}
                 />
             </group>

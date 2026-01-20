@@ -7,9 +7,7 @@ interface WatchGearProps {
     radius?: number
     teeth?: number
     spokes?: number
-    innerRadius?: number
-    thickness?: number
-    depth?: number
+    innerRadius?: number  // 比例：0-1
     color?: string
     position?: [number, number, number]
     rotation?: [number, number, number]
@@ -17,24 +15,29 @@ interface WatchGearProps {
 
 /**
  * 精密機械錶風格齒輪
- * - 立體設計（有深度，任何角度都可見）
+ * - 密集齒形設計（更像真實手錶齒輪）
  * - 銀色金屬質感 + 輕微自發光
- * - 自然的 3D 外觀
+ * - 可與其他齒輪正確咬合
  */
 const WatchGear = forwardRef<THREE.Group, WatchGearProps>(({
     radius = 0.1,
-    teeth = 20,
+    teeth = 40,
     spokes = 5,
-    innerRadius = 0.3,
-    thickness = 0.012,
-    depth = 0.03,
-    color = '#c0c0c0',
+    innerRadius = 0.25,  // 內圈半徑比例
+    color = '#a0a0a0',
     position = [0, 0, 0],
     rotation = [0, 0, 0],
 }, ref) => {
-    const actualInnerRadius = radius * innerRadius
+    // 基於齒數計算模數（module）
+    const module = (2 * radius) / teeth
+    const toothHeight = module * 2.2  // 齒高
+    const toothWidth = module * 0.5   // 齒寬（更細）
+    const depth = module * 3          // 齒輪厚度
 
-    // 計算齒的位置
+    const actualInnerRadius = radius * innerRadius
+    const rimWidth = module * 1.5     // 外圈寬度
+
+    // 計算齒的位置（involute 近似）
     const teethData = useMemo(() => {
         const data = []
         for (let i = 0; i < teeth; i++) {
@@ -54,13 +57,13 @@ const WatchGear = forwardRef<THREE.Group, WatchGearProps>(({
         return data
     }, [spokes])
 
-    // 共用材質屬性（含 emissive，depthTest=false 確保穿透玻璃可見）
+    // 共用材質屬性
     const materialProps = {
         color,
-        metalness: 0.85,
-        roughness: 0.2,
+        metalness: 0.9,
+        roughness: 0.15,
         emissive: color,
-        emissiveIntensity: 0.3,
+        emissiveIntensity: 0.2,
         side: THREE.DoubleSide as THREE.Side,
         depthTest: false,
     }
@@ -71,38 +74,28 @@ const WatchGear = forwardRef<THREE.Group, WatchGearProps>(({
             position={position}
             rotation={[rotation[0], rotation[1], rotation[2]]}
         >
-            {/* 外圈 */}
+            {/* 外圈（rim）- 齒輪本體 */}
             <mesh>
-                <torusGeometry args={[radius, thickness, 16, 64]} />
+                <torusGeometry args={[radius - rimWidth / 2, rimWidth / 2, 8, 64]} />
                 <meshStandardMaterial {...materialProps} />
             </mesh>
 
-            {/* 外圈加厚層 - 增加立體感 */}
-            <mesh position={[0, 0, depth / 2]}>
-                <torusGeometry args={[radius, thickness * 0.8, 12, 64]} />
-                <meshStandardMaterial {...materialProps} />
-            </mesh>
-            <mesh position={[0, 0, -depth / 2]}>
-                <torusGeometry args={[radius, thickness * 0.8, 12, 64]} />
-                <meshStandardMaterial {...materialProps} />
-            </mesh>
-
-            {/* 內圈（軸孔） */}
+            {/* 內圈（hub）*/}
             <mesh>
-                <torusGeometry args={[actualInnerRadius, thickness * 0.8, 12, 32]} />
+                <torusGeometry args={[actualInnerRadius + rimWidth / 3, rimWidth / 3, 8, 32]} />
                 <meshStandardMaterial {...materialProps} />
             </mesh>
 
-            {/* 中心軸 */}
+            {/* 中心軸孔 */}
             <mesh>
-                <cylinderGeometry args={[actualInnerRadius * 0.4, actualInnerRadius * 0.4, depth * 1.5, 16]} />
+                <cylinderGeometry args={[actualInnerRadius * 0.5, actualInnerRadius * 0.5, depth * 1.2, 16]} />
                 <meshStandardMaterial {...materialProps} />
             </mesh>
 
-            {/* 輻條 */}
+            {/* 輻條 - 連接內圈和外圈 */}
             {spokesData.map((spoke, i) => {
-                const spokeLength = radius - actualInnerRadius - thickness * 2
-                const midRadius = (radius + actualInnerRadius) / 2
+                const spokeLength = radius - actualInnerRadius - rimWidth
+                const midRadius = (radius - rimWidth / 2 + actualInnerRadius + rimWidth / 3) / 2
                 return (
                     <mesh
                         key={`spoke-${i}`}
@@ -113,27 +106,32 @@ const WatchGear = forwardRef<THREE.Group, WatchGearProps>(({
                         ]}
                         rotation={[0, 0, spoke.angle]}
                     >
-                        <boxGeometry args={[spokeLength, thickness * 2.5, depth]} />
+                        <boxGeometry args={[spokeLength, rimWidth * 0.6, depth * 0.7]} />
                         <meshStandardMaterial {...materialProps} />
                     </mesh>
                 )
             })}
 
-            {/* 齒 */}
-            {teethData.map((tooth, i) => (
-                <mesh
-                    key={`tooth-${i}`}
-                    position={[
-                        Math.cos(tooth.angle) * (radius + thickness),
-                        Math.sin(tooth.angle) * (radius + thickness),
-                        0
-                    ]}
-                    rotation={[0, 0, tooth.angle]}
-                >
-                    <boxGeometry args={[thickness * 3.5, thickness * 2, depth * 0.8]} />
-                    <meshStandardMaterial {...materialProps} />
-                </mesh>
-            ))}
+            {/* 齒 - 密集排列，細小尖銳 */}
+            {teethData.map((tooth, i) => {
+                // 齒的位置在外圈邊緣
+                const toothRadius = radius + toothHeight / 2
+                return (
+                    <mesh
+                        key={`tooth-${i}`}
+                        position={[
+                            Math.cos(tooth.angle) * toothRadius,
+                            Math.sin(tooth.angle) * toothRadius,
+                            0
+                        ]}
+                        rotation={[0, 0, tooth.angle]}
+                    >
+                        {/* 使用梯形近似齒形 */}
+                        <boxGeometry args={[toothHeight, toothWidth, depth * 0.9]} />
+                        <meshStandardMaterial {...materialProps} />
+                    </mesh>
+                )
+            })}
         </group>
     )
 })

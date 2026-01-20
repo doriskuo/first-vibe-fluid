@@ -265,11 +265,11 @@ export default function GlassWaterDrop() {
 
     return (
         <>
-            {/* Environment - studio 在白背景下更明顯 */}
-            <Environment preset="studio" background={false} />
+            {/* Environment - city 預設光照更均勻 */}
+            <Environment preset="city" background={false} />
 
             <ambientLight intensity={0.8} />
-            <spotLight position={[10, 10, 10]} angle={0.15} penumbra={1} intensity={2} />
+            <spotLight position={[0, 5, 10]} angle={0.3} penumbra={1} intensity={1.5} />
             <pointLight position={[-10, -10, -10]} intensity={1.5} color="#a8d8ff" />
 
             <mesh
@@ -298,6 +298,7 @@ export default function GlassWaterDrop() {
                     color="#f0f8ff"
                     transparent={true}
                     opacity={0}
+                    depthWrite={false}
                 />
             </mesh>
 
@@ -410,8 +411,8 @@ export default function GlassWaterDrop() {
                     teeth={24}
                     spokes={6}
                     thickness={0.012}
-                    color="#d4d4d4"
-                    position={[-1.0, 0, 0]}
+                    color="#808080"
+                    position={[-1.0, 0, 0.1]}
                     rotation={[Math.PI / 2, 0, 0]}
                 />
                 {/* 左側 - 小齒輪 (咬合) */}
@@ -421,8 +422,8 @@ export default function GlassWaterDrop() {
                     teeth={14}
                     spokes={4}
                     thickness={0.01}
-                    color="#b8b8b8"
-                    position={[-0.6, 0.25, 0]}
+                    color="#808080"
+                    position={[-0.6, 0.25, 0.1]}
                     rotation={[Math.PI / 2, 0, 0]}
                 />
 
@@ -433,19 +434,19 @@ export default function GlassWaterDrop() {
                     teeth={20}
                     spokes={5}
                     thickness={0.011}
-                    color="#c8c8c8"
-                    position={[1.0, 0, 0]}
+                    color="#808080"
+                    position={[1.0, 0, 0.1]}
                     rotation={[Math.PI / 2, 0, 0]}
                 />
                 {/* 右側 - 小齒輪 (咬合) */}
                 <WatchGear
                     ref={gear4Ref}
-                    radius={0.15}
-                    teeth={12}
-                    spokes={3}
-                    thickness={0.009}
-                    color="#a8a8a8"
-                    position={[0.6, -0.2, 0]}
+                    radius={0.22}
+                    teeth={14}
+                    spokes={4}
+                    thickness={0.01}
+                    color="#808080"
+                    position={[0.6, -0.2, 0.1]}
                     rotation={[Math.PI / 2, 0, 0]}
                 />
             </group>

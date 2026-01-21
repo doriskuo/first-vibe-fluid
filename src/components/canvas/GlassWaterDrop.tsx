@@ -26,13 +26,18 @@ export default function GlassWaterDrop() {
     const light1Ref = useRef<THREE.PointLight>(null)
     const light2Ref = useRef<THREE.PointLight>(null)
 
-    // 精密齒輪 refs
+    // 精密齒輪 refs - 左側群組
     const gearGroupRef = useRef<THREE.Group>(null)
     const gear1Ref = useRef<THREE.Group>(null)
     const gear2Ref = useRef<THREE.Group>(null)
     const gear3Ref = useRef<THREE.Group>(null)
     const gear4Ref = useRef<THREE.Group>(null)
     const gear5Ref = useRef<THREE.Group>(null)
+    // 右側群組
+    const rightGear1Ref = useRef<THREE.Group>(null)
+    const rightGear2Ref = useRef<THREE.Group>(null)
+    const rightGear3Ref = useRef<THREE.Group>(null)
+    const rightGear4Ref = useRef<THREE.Group>(null)
 
     const { getState } = useScrollAnimation()
 
@@ -252,21 +257,22 @@ export default function GlassWaterDrop() {
                     gearGroupRef.current.visible = morphT >= 1 && meshRef.current.visible
                     gearGroupRef.current.rotation.copy(meshRef.current.rotation)
 
-                    // 齒輪同步旋轉動畫
+                    // 齒輪獨立自轉動畫
                     if (gearGroupRef.current.visible) {
-                        const time = performance.now() * 0.0005  // 緩慢轉動
+                        const time = performance.now() * 0.0003  // 基礎時間
 
-                        // 左側組：大齒輪(48齒) + 小齒輪(12齒)，比例 4:1
-                        if (gear1Ref.current && gear2Ref.current) {
-                            gear1Ref.current.rotation.z = time
-                            gear2Ref.current.rotation.z = -time * 4  // 反向 + 4倍速
-                        }
+                        // ===== 左側群組（5顆）- 各自獨立轉速 =====
+                        if (gear1Ref.current) gear1Ref.current.rotation.z = time * 0.8   // 大齒輪慢
+                        if (gear2Ref.current) gear2Ref.current.rotation.z = -time * 1.2  // 中齒輪
+                        if (gear3Ref.current) gear3Ref.current.rotation.z = time * 1.8   // 小齒輪快
+                        if (gear4Ref.current) gear4Ref.current.rotation.z = -time * 2.5  // 微型更快
+                        if (gear5Ref.current) gear5Ref.current.rotation.z = time * 3.2   // 超小最快
 
-                        // 右側組：中齒輪(36齒) + 小齒輪(12齒)，比例 3:1
-                        if (gear3Ref.current && gear4Ref.current) {
-                            gear3Ref.current.rotation.z = -time * 1.2  // 稍快一點
-                            gear4Ref.current.rotation.z = time * 1.2 * 3  // 反向 + 3倍速
-                        }
+                        // ===== 右側群組（4顆）- 不對稱轉速 =====
+                        if (rightGear1Ref.current) rightGear1Ref.current.rotation.z = -time * 1.0
+                        if (rightGear2Ref.current) rightGear2Ref.current.rotation.z = time * 1.6
+                        if (rightGear3Ref.current) rightGear3Ref.current.rotation.z = -time * 2.2
+                        if (rightGear4Ref.current) rightGear4Ref.current.rotation.z = time * 2.8
                     }
                 }
             }
@@ -419,51 +425,117 @@ export default function GlassWaterDrop() {
                 <pointLight ref={light2Ref} position={[0, 0.2, 0]} intensity={1.5} distance={1} color="#ff00ff" />
             </group>
 
-            {/* 精密機械錶風格齒輪組 - 咬合設計 */}
+            {/* 精密機械錶風格齒輪組 - 不規則科技風佈局 */}
             <group ref={gearGroupRef} scale={[0.15, 0.15, 0.15]} visible={false}>
-                {/* 左側組 - 大齒輪 + 小齒輪咬合 */}
-                {/* 大齒輪：48齒, radius=0.4 */}
+                {/* ===== 左側群組（5顆，不規則分佈）===== */}
+                {/* 大齒輪 - 左後方主視覺 */}
                 <WatchGear
                     ref={gear1Ref}
-                    radius={0.4}
-                    teeth={48}
+                    radius={0.32}
+                    teeth={40}
                     spokes={6}
-                    color="#707070"
-                    position={[-0.85, 0, 0.1]}
+                    color="#909090"
+                    glowColor="#00aaff"
+                    glowIntensity={0.35}
+                    position={[-0.95, 0.08, -0.08]}
                     rotation={[Math.PI / 2, 0, 0]}
                 />
-                {/* 小齒輪：12齒, radius=0.1 咬合大齒輪 */}
-                {/* 中心距 = 0.4 + 0.1 = 0.5 */}
+                {/* 中齒輪 - 左下前方 */}
                 <WatchGear
                     ref={gear2Ref}
-                    radius={0.1}
+                    radius={0.2}
+                    teeth={26}
+                    spokes={4}
+                    color="#a0a0a0"
+                    glowColor="#00ccff"
+                    glowIntensity={0.4}
+                    position={[-0.55, -0.18, 0.12]}
+                    rotation={[Math.PI / 2, 0, 0]}
+                />
+                {/* 小齒輪 - 左上前方 */}
+                <WatchGear
+                    ref={gear3Ref}
+                    radius={0.14}
+                    teeth={18}
+                    spokes={3}
+                    color="#b0b0b0"
+                    glowColor="#00ffff"
+                    glowIntensity={0.5}
+                    position={[-0.68, 0.28, 0.15]}
+                    rotation={[Math.PI / 2, 0, 0]}
+                />
+                {/* 微型齒輪 - 極左上 */}
+                <WatchGear
+                    ref={gear4Ref}
+                    radius={0.09}
                     teeth={12}
                     spokes={3}
-                    color="#808080"
-                    position={[-0.85 + 0.5, 0.05, 0.1]}
+                    color="#c0c0c0"
+                    glowColor="#00ddff"
+                    glowIntensity={0.55}
+                    position={[-1.18, 0.22, 0.05]}
+                    rotation={[Math.PI / 2, 0, 0]}
+                />
+                {/* 超小齒輪 - 左下後 */}
+                <WatchGear
+                    ref={gear5Ref}
+                    radius={0.07}
+                    teeth={10}
+                    spokes={3}
+                    color="#d0d0d0"
+                    glowColor="#00eeff"
+                    glowIntensity={0.6}
+                    position={[-1.08, -0.12, -0.05]}
                     rotation={[Math.PI / 2, 0, 0]}
                 />
 
-                {/* 右側組 - 中齒輪 + 小齒輪咬合 */}
-                {/* 中齒輪：36齒, radius=0.3 */}
+                {/* ===== 右側群組（4顆，不對稱）===== */}
+                {/* 中大齒輪 - 右側主視覺 */}
                 <WatchGear
-                    ref={gear3Ref}
-                    radius={0.3}
-                    teeth={36}
+                    ref={rightGear1Ref}
+                    radius={0.26}
+                    teeth={32}
                     spokes={5}
-                    color="#707070"
-                    position={[0.85, 0, 0.1]}
+                    color="#909090"
+                    glowColor="#00aaff"
+                    glowIntensity={0.35}
+                    position={[0.85, -0.05, 0.02]}
                     rotation={[Math.PI / 2, 0, 0]}
                 />
-                {/* 小齒輪：12齒, radius=0.1 咬合中齒輪 */}
-                {/* 中心距 = 0.3 + 0.1 = 0.4 */}
+                {/* 小齒輪 - 右上前 */}
                 <WatchGear
-                    ref={gear4Ref}
-                    radius={0.1}
-                    teeth={12}
+                    ref={rightGear2Ref}
+                    radius={0.15}
+                    teeth={20}
                     spokes={3}
-                    color="#808080"
-                    position={[0.85 - 0.4, -0.1, 0.1]}
+                    color="#a0a0a0"
+                    glowColor="#00ccff"
+                    glowIntensity={0.45}
+                    position={[0.58, 0.2, 0.14]}
+                    rotation={[Math.PI / 2, 0, 0]}
+                />
+                {/* 微型齒輪 - 極右後 */}
+                <WatchGear
+                    ref={rightGear3Ref}
+                    radius={0.11}
+                    teeth={14}
+                    spokes={3}
+                    color="#b0b0b0"
+                    glowColor="#00ddff"
+                    glowIntensity={0.5}
+                    position={[1.12, 0.12, -0.06]}
+                    rotation={[Math.PI / 2, 0, 0]}
+                />
+                {/* 超微型齒輪 - 右下 */}
+                <WatchGear
+                    ref={rightGear4Ref}
+                    radius={0.08}
+                    teeth={11}
+                    spokes={3}
+                    color="#c0c0c0"
+                    glowColor="#00eeff"
+                    glowIntensity={0.55}
+                    position={[0.7, -0.22, 0.1]}
                     rotation={[Math.PI / 2, 0, 0]}
                 />
             </group>

@@ -9,14 +9,16 @@ interface WatchGearProps {
     spokes?: number
     innerRadius?: number  // 比例：0-1
     color?: string
+    glowColor?: string      // 發光顏色
+    glowIntensity?: number  // 發光強度
     position?: [number, number, number]
     rotation?: [number, number, number]
 }
 
 /**
- * 精密機械錶風格齒輪
+ * 精密機械錶風格齒輪 + 數位科技發光效果
  * - 密集齒形設計（更像真實手錶齒輪）
- * - 銀色金屬質感 + 輕微自發光
+ * - 銀色金屬質感 + 可自訂發光顏色
  * - 可與其他齒輪正確咬合
  */
 const WatchGear = forwardRef<THREE.Group, WatchGearProps>(({
@@ -25,6 +27,8 @@ const WatchGear = forwardRef<THREE.Group, WatchGearProps>(({
     spokes = 5,
     innerRadius = 0.25,  // 內圈半徑比例
     color = '#a0a0a0',
+    glowColor = '#00aaff',    // 預設藍色科技感
+    glowIntensity = 0.3,      // 預設發光強度
     position = [0, 0, 0],
     rotation = [0, 0, 0],
 }, ref) => {
@@ -57,13 +61,13 @@ const WatchGear = forwardRef<THREE.Group, WatchGearProps>(({
         return data
     }, [spokes])
 
-    // 共用材質屬性
+    // 共用材質屬性 - 數位科技風格
     const materialProps = {
         color,
-        metalness: 0.9,
-        roughness: 0.15,
-        emissive: color,
-        emissiveIntensity: 0.2,
+        metalness: 0.85,
+        roughness: 0.2,
+        emissive: glowColor,
+        emissiveIntensity: glowIntensity,
         side: THREE.DoubleSide as THREE.Side,
         depthTest: false,
     }

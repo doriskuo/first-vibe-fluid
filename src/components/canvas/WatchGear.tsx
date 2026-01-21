@@ -3,6 +3,9 @@
 import { useMemo, forwardRef } from 'react'
 import * as THREE from 'three'
 
+// 齒輪風格類型
+type GearStyle = 'classic' | 'slim' | 'hollow' | 'tech' | 'minimal'
+
 interface WatchGearProps {
     radius?: number
     teeth?: number
@@ -11,37 +14,59 @@ interface WatchGearProps {
     color?: string
     glowColor?: string      // 發光顏色
     glowIntensity?: number  // 發光強度
+    gearStyle?: GearStyle   // 齒輪風格
     position?: [number, number, number]
     rotation?: [number, number, number]
 }
 
 /**
- * 精密機械錶風格齒輪 + 數位科技發光效果
- * - 密集齒形設計（更像真實手錶齒輪）
- * - 銀色金屬質感 + 可自訂發光顏色
- * - 可與其他齒輪正確咬合
+ * 多樣式精密齒輪
+ * 支持 5 種風格：
+ * - classic: 傳統厚齒輪
+ * - slim: 纖細現代風
+ * - hollow: 中空設計
+ * - tech: 科技感（多圈）
+ * - minimal: 極簡風
  */
 const WatchGear = forwardRef<THREE.Group, WatchGearProps>(({
     radius = 0.1,
     teeth = 40,
     spokes = 5,
-    innerRadius = 0.25,  // 內圈半徑比例
+    innerRadius = 0.25,
     color = '#a0a0a0',
-    glowColor = '#00aaff',    // 預設藍色科技感
-    glowIntensity = 0.3,      // 預設發光強度
+    glowColor = '#00aaff',
+    glowIntensity = 0.3,
+    gearStyle = 'classic',
     position = [0, 0, 0],
     rotation = [0, 0, 0],
 }, ref) => {
-    // 基於齒數計算模數（module）
+    // 基於風格調整參數
+    const styleConfig = useMemo(() => {
+        switch (gearStyle) {
+            case 'slim':
+                return { toothScale: 0.6, rimScale: 0.8, spokeWidth: 0.4, hasInnerRing: true, hasOuterRing: false }
+            case 'hollow':
+                return { toothScale: 0.8, rimScale: 1.0, spokeWidth: 0.3, hasInnerRing: false, hasOuterRing: true }
+            case 'tech':
+                return { toothScale: 0.5, rimScale: 1.2, spokeWidth: 0.35, hasInnerRing: true, hasOuterRing: true }
+            case 'minimal':
+                return { toothScale: 0.4, rimScale: 0.6, spokeWidth: 0.5, hasInnerRing: false, hasOuterRing: false }
+            case 'classic':
+            default:
+                return { toothScale: 1.0, rimScale: 1.0, spokeWidth: 0.6, hasInnerRing: true, hasOuterRing: false }
+        }
+    }, [gearStyle])
+
+    // 基於齒數計算模數
     const module = (2 * radius) / teeth
-    const toothHeight = module * 2.2  // 齒高
-    const toothWidth = module * 0.5   // 齒寬（更細）
-    const depth = module * 3          // 齒輪厚度
+    const toothHeight = module * 2.2 * styleConfig.toothScale
+    const toothWidth = module * (gearStyle === 'slim' ? 0.35 : gearStyle === 'tech' ? 0.4 : 0.5)
+    const depth = module * 3
 
     const actualInnerRadius = radius * innerRadius
-    const rimWidth = module * 1.5     // 外圈寬度
+    const rimWidth = module * 1.5 * styleConfig.rimScale
 
-    // 計算齒的位置（involute 近似）
+    // 計算齒的位置
     const teethData = useMemo(() => {
         const data = []
         for (let i = 0; i < teeth; i++) {
@@ -61,7 +86,7 @@ const WatchGear = forwardRef<THREE.Group, WatchGearProps>(({
         return data
     }, [spokes])
 
-    // 共用材質屬性 - 數位科技風格
+    // 共用材質屬性
     const materialProps = {
         color,
         metalness: 0.85,
@@ -84,11 +109,21 @@ const WatchGear = forwardRef<THREE.Group, WatchGearProps>(({
                 <meshStandardMaterial {...materialProps} />
             </mesh>
 
-            {/* 內圈（hub）*/}
-            <mesh>
-                <torusGeometry args={[actualInnerRadius + rimWidth / 3, rimWidth / 3, 8, 32]} />
-                <meshStandardMaterial {...materialProps} />
-            </mesh>
+            {/* 內圈（hub）- 根據風格顯示 */}
+            {styleConfig.hasInnerRing && (
+                <mesh>
+                    <torusGeometry args={[actualInnerRadius + rimWidth / 3, rimWidth / 3, 8, 32]} />
+                    <meshStandardMaterial {...materialProps} />
+                </mesh>
+            )}
+
+            {/* 額外外圈 - tech/hollow 風格 */}
+            {styleConfig.hasOuterRing && (
+                <mesh>
+                    <torusGeometry args={[radius * 0.85, rimWidth / 4, 8, 48]} />
+                    <meshStandardMaterial {...materialProps} emissiveIntensity={glowIntensity * 1.5} />
+                </mesh>
+            )}
 
             {/* 中心軸孔 */}
             <mesh>
@@ -110,15 +145,35 @@ const WatchGear = forwardRef<THREE.Group, WatchGearProps>(({
                         ]}
                         rotation={[0, 0, spoke.angle]}
                     >
-                        <boxGeometry args={[spokeLength, rimWidth * 0.6, depth * 0.7]} />
+                        <boxGeometry args={[spokeLength, rimWidth * styleConfig.spokeWidth, depth * 0.7]} />
                         <meshStandardMaterial {...materialProps} />
                     </mesh>
                 )
             })}
 
-            {/* 齒 - 密集排列，細小尖銳 */}
+            {/* hollow 風格 - 額外孔洞裝飾 */}
+            {gearStyle === 'hollow' && spokesData.map((spoke, i) => {
+                const holeRadius = (radius - actualInnerRadius) * 0.25
+                const holePos = (radius + actualInnerRadius) / 2
+                const offsetAngle = spoke.angle + (Math.PI / spokes)  // 在輻條之間
+                return (
+                    <mesh
+                        key={`hole-${i}`}
+                        position={[
+                            Math.cos(offsetAngle) * holePos,
+                            Math.sin(offsetAngle) * holePos,
+                            0
+                        ]}
+                        rotation={[Math.PI / 2, 0, 0]}
+                    >
+                        <torusGeometry args={[holeRadius, holeRadius * 0.3, 8, 16]} />
+                        <meshStandardMaterial {...materialProps} emissiveIntensity={glowIntensity * 1.2} />
+                    </mesh>
+                )
+            })}
+
+            {/* 齒 - 根據風格調整形狀 */}
             {teethData.map((tooth, i) => {
-                // 齒的位置在外圈邊緣
                 const toothRadius = radius + toothHeight / 2
                 return (
                     <mesh
@@ -130,9 +185,27 @@ const WatchGear = forwardRef<THREE.Group, WatchGearProps>(({
                         ]}
                         rotation={[0, 0, tooth.angle]}
                     >
-                        {/* 使用梯形近似齒形 */}
                         <boxGeometry args={[toothHeight, toothWidth, depth * 0.9]} />
                         <meshStandardMaterial {...materialProps} />
+                    </mesh>
+                )
+            })}
+
+            {/* tech 風格 - 額外裝飾小圓點 */}
+            {gearStyle === 'tech' && [0, 1, 2, 3].map((i) => {
+                const dotAngle = (i / 4) * Math.PI * 2 + Math.PI / 8
+                const dotRadius = radius * 0.65
+                return (
+                    <mesh
+                        key={`dot-${i}`}
+                        position={[
+                            Math.cos(dotAngle) * dotRadius,
+                            Math.sin(dotAngle) * dotRadius,
+                            depth * 0.3
+                        ]}
+                    >
+                        <sphereGeometry args={[rimWidth * 0.25, 8, 8]} />
+                        <meshStandardMaterial {...materialProps} emissiveIntensity={glowIntensity * 2} />
                     </mesh>
                 )
             })}

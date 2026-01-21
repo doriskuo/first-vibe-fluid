@@ -428,60 +428,65 @@ export default function GlassWaterDrop() {
             {/* 精密機械錶風格齒輪組 - 不規則科技風佈局 */}
             <group ref={gearGroupRef} scale={[0.15, 0.15, 0.15]} visible={false}>
                 {/* ===== 左側群組（5顆，不規則分佈）===== */}
-                {/* 大齒輪 - 左後方主視覺 */}
+                {/* 大齒輪 - 左後方主視覺 - tech 風格 */}
                 <WatchGear
                     ref={gear1Ref}
                     radius={0.32}
                     teeth={40}
                     spokes={6}
+                    gearStyle="tech"
                     color="#909090"
                     glowColor="#00aaff"
                     glowIntensity={0.35}
                     position={[-0.95, 0.08, -0.08]}
                     rotation={[Math.PI / 2, 0, 0]}
                 />
-                {/* 中齒輪 - 左下前方 */}
+                {/* 中齒輪 - 左下前方 - hollow 風格 */}
                 <WatchGear
                     ref={gear2Ref}
                     radius={0.2}
                     teeth={26}
                     spokes={4}
+                    gearStyle="hollow"
                     color="#a0a0a0"
                     glowColor="#00ccff"
                     glowIntensity={0.4}
                     position={[-0.55, -0.18, 0.12]}
                     rotation={[Math.PI / 2, 0, 0]}
                 />
-                {/* 小齒輪 - 左上前方 */}
+                {/* 小齒輪 - 左上前方 - classic 風格 */}
                 <WatchGear
                     ref={gear3Ref}
                     radius={0.14}
                     teeth={18}
                     spokes={3}
+                    gearStyle="classic"
                     color="#b0b0b0"
                     glowColor="#00ffff"
                     glowIntensity={0.5}
                     position={[-0.68, 0.28, 0.15]}
                     rotation={[Math.PI / 2, 0, 0]}
                 />
-                {/* 微型齒輪 - 極左上 */}
+                {/* 微型齒輪 - 極左上 - slim 風格 */}
                 <WatchGear
                     ref={gear4Ref}
                     radius={0.09}
                     teeth={12}
                     spokes={3}
+                    gearStyle="slim"
                     color="#c0c0c0"
                     glowColor="#00ddff"
                     glowIntensity={0.55}
                     position={[-1.18, 0.22, 0.05]}
                     rotation={[Math.PI / 2, 0, 0]}
                 />
-                {/* 超小齒輪 - 左下後 */}
+                {/* 超小齒輪 - 左下後 - minimal 風格 */}
                 <WatchGear
                     ref={gear5Ref}
                     radius={0.07}
                     teeth={10}
                     spokes={3}
+                    gearStyle="minimal"
                     color="#d0d0d0"
                     glowColor="#00eeff"
                     glowIntensity={0.6}
@@ -490,48 +495,52 @@ export default function GlassWaterDrop() {
                 />
 
                 {/* ===== 右側群組（4顆，不對稱）===== */}
-                {/* 中大齒輪 - 右側主視覺 */}
+                {/* 中大齒輪 - 右側主視覺 - hollow 風格 */}
                 <WatchGear
                     ref={rightGear1Ref}
                     radius={0.26}
                     teeth={32}
                     spokes={5}
+                    gearStyle="hollow"
                     color="#909090"
                     glowColor="#00aaff"
                     glowIntensity={0.35}
                     position={[0.85, -0.05, 0.02]}
                     rotation={[Math.PI / 2, 0, 0]}
                 />
-                {/* 小齒輪 - 右上前 */}
+                {/* 小齒輪 - 右上前 - tech 風格 */}
                 <WatchGear
                     ref={rightGear2Ref}
                     radius={0.15}
                     teeth={20}
-                    spokes={3}
+                    spokes={4}
+                    gearStyle="tech"
                     color="#a0a0a0"
                     glowColor="#00ccff"
                     glowIntensity={0.45}
                     position={[0.58, 0.2, 0.14]}
                     rotation={[Math.PI / 2, 0, 0]}
                 />
-                {/* 微型齒輪 - 極右後 */}
+                {/* 微型齒輪 - 極右後 - classic 風格 */}
                 <WatchGear
                     ref={rightGear3Ref}
                     radius={0.11}
                     teeth={14}
                     spokes={3}
+                    gearStyle="classic"
                     color="#b0b0b0"
                     glowColor="#00ddff"
                     glowIntensity={0.5}
                     position={[1.12, 0.12, -0.06]}
                     rotation={[Math.PI / 2, 0, 0]}
                 />
-                {/* 超微型齒輪 - 右下 */}
+                {/* 超微型齒輪 - 右下 - slim 風格 */}
                 <WatchGear
                     ref={rightGear4Ref}
                     radius={0.08}
                     teeth={11}
                     spokes={3}
+                    gearStyle="slim"
                     color="#c0c0c0"
                     glowColor="#00eeff"
                     glowIntensity={0.55}

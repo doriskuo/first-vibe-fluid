@@ -6,6 +6,7 @@ import { MeshTransmissionMaterial, Environment } from '@react-three/drei'
 import * as THREE from 'three'
 import { useScrollAnimation } from '@/hooks/useScrollAnimation'
 import WatchGear from './WatchGear'
+import VRHeadphones from './VRHeadphones'
 
 /**
  * GlassWaterDrop - 3D 玻璃水滴
@@ -45,6 +46,11 @@ export default function GlassWaterDrop() {
     const [isDragging, setIsDragging] = useState(false)
     const [rotation, setRotation] = useState({ x: 0, y: 0, z: 0 })
     const lastPointer = useRef({ x: 0, y: 0 })
+
+    // VR 耳罩狀態
+    const [headphonesVisible, setHeadphonesVisible] = useState(false)
+    const [headphonesOpacity, setHeadphonesOpacity] = useState(0)
+    const headphonesRotation = useRef(new THREE.Euler())
 
     // VR 耳機形狀參數
     const vrParams = useMemo(() => ({
@@ -276,6 +282,17 @@ export default function GlassWaterDrop() {
                     }
                 }
             }
+        }
+
+        // ===== VR 耳罩跟隨主體 =====
+        if (meshRef.current) {
+            const morphT = Math.min(Math.max((scrollValue - 2.4) / 0.5, 0), 1)
+            const shouldShow = morphT >= 1 && meshRef.current.visible
+            setHeadphonesVisible(shouldShow)
+            if (materialRef.current) {
+                setHeadphonesOpacity(materialRef.current.opacity)
+            }
+            headphonesRotation.current.copy(meshRef.current.rotation)
         }
     })
 
@@ -548,6 +565,13 @@ export default function GlassWaterDrop() {
                     rotation={[Math.PI / 2, 0, 0]}
                 />
             </group>
+
+            {/* VR 耳罩 - 左右兩側 */}
+            <VRHeadphones
+                visible={headphonesVisible}
+                parentRotation={headphonesRotation.current}
+                opacity={headphonesOpacity}
+            />
         </>
     )
 }

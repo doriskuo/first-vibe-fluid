@@ -28,11 +28,10 @@ export default function VRHeadphones({ visible, parentRotation, opacity }: VRHea
     const rightMatRef = useRef<any>(null)
 
     // 八角形耳罩幾何體
-    // 較大的耳罩，讓邊緣能接到 VR 主體
+    // 加大尺寸，讓邊緣能接到 VR 主體
     const earCupGeometry = useMemo(() => {
-        // 半徑 0.08，讓邊緣剛好接到 VR
-        // 厚度 0.04
-        const geo = new THREE.CylinderGeometry(0.08, 0.08, 0.04, 8)
+        // 半徑 0.12（加大），厚度 0.05
+        const geo = new THREE.CylinderGeometry(0.12, 0.12, 0.05, 8)
         // 旋轉讓圓柱軸心朝向 X 軸（左右方向），平面朝外
         geo.rotateZ(Math.PI / 2)
         return geo
@@ -52,15 +51,16 @@ export default function VRHeadphones({ visible, parentRotation, opacity }: VRHea
     if (!visible) return null
 
     // 世界座標位置
-    // 需要足夠大讓耳罩在 VR 外側
-    // 從截圖看 VR 邊緣大約在 ±0.25，耳罩需要在更外側
-    const xOffset = 0.35  // 增加到更外側
+    // X: 左右側外邊
+    // Y or Z: 往後移動（VR 旋轉 90° 後座標系不同）
+    const xOffset = 0.35  // 左右位置不變
+    const yOffset = -0.1  // 試試用 Y 軸往後（VR 旋轉後 Y 可能是前後）
 
     return (
         // 不用額外 scale，直接用世界座標
         <group ref={groupRef}>
             {/* 左側耳罩 */}
-            <mesh geometry={earCupGeometry} position={[-xOffset, 0, 0]}>
+            <mesh geometry={earCupGeometry} position={[-xOffset, yOffset, 0]}>
                 <MeshTransmissionMaterial
                     ref={leftMatRef}
                     backside
@@ -83,7 +83,7 @@ export default function VRHeadphones({ visible, parentRotation, opacity }: VRHea
             </mesh>
 
             {/* 右側耳罩 */}
-            <mesh geometry={earCupGeometry} position={[xOffset, 0, 0]}>
+            <mesh geometry={earCupGeometry} position={[xOffset, yOffset, 0]}>
                 <MeshTransmissionMaterial
                     ref={rightMatRef}
                     backside

@@ -186,53 +186,41 @@ export default function VRHeadphones({ visible, parentRotation, opacity }: VRHea
         <group ref={groupRef}>
             {/* 左側耳罩 - 外側朝左（鏡像讓凸起朝外） */}
             <mesh geometry={earCupGeometry} position={[-xOffset, yOffset, 0]} scale={[-1, 1, 1]}>
-                <MeshTransmissionMaterial
+                <meshPhysicalMaterial
                     ref={leftMatRef}
-                    backside
-                    samples={32}
-                    resolution={1024}
-                    thickness={3.0}
-                    roughness={0.05}
+                    color="#f8fcff"
+                    metalness={0}
+                    roughness={0.02}
+                    transmission={0.95}
+                    thickness={0.5}
                     ior={1.5}
-                    clearcoat={1}
-                    chromaticAberration={0.1}
-                    anisotropy={0.6}
-                    distortion={0.3}
-                    distortionScale={0.2}
-                    temporalDistortion={0.05}
-                    attenuationDistance={0.8}
-                    attenuationColor="#ffffff"
-                    color="#f0f8ff"
                     transparent={true}
                     opacity={opacity}
-                    depthWrite={false}
+                    clearcoat={1}
+                    clearcoatRoughness={0}
+                    envMapIntensity={0}
                     side={THREE.DoubleSide}
+                    depthWrite={false}
                 />
             </mesh>
 
             {/* 右側耳罩 - 外側朝右 */}
             <mesh geometry={rightEarCupGeometry} position={[xOffset, yOffset, 0]}>
-                <MeshTransmissionMaterial
+                <meshPhysicalMaterial
                     ref={rightMatRef}
-                    backside
-                    samples={32}
-                    resolution={1024}
-                    thickness={3.0}
-                    roughness={0.05}
+                    color="#f8fcff"
+                    metalness={0}
+                    roughness={0.02}
+                    transmission={0.95}
+                    thickness={0.5}
                     ior={1.5}
-                    clearcoat={1}
-                    chromaticAberration={0.1}
-                    anisotropy={0.6}
-                    distortion={0.3}
-                    distortionScale={0.2}
-                    temporalDistortion={0.05}
-                    attenuationDistance={0.8}
-                    attenuationColor="#ffffff"
-                    color="#f0f8ff"
                     transparent={true}
                     opacity={opacity}
-                    depthWrite={false}
+                    clearcoat={1}
+                    clearcoatRoughness={0}
+                    envMapIntensity={0}
                     side={THREE.DoubleSide}
+                    depthWrite={false}
                 />
             </mesh>
         </group>

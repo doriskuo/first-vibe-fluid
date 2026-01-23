@@ -73,7 +73,7 @@ export const stages: ScrollStage[] = [
     },
     {
         name: 'headphones',
-        durationVh: 1600, // 齒輪淡入 -> 耳罩彈出
+        durationVh: 3000, // 增加到 3000vh 以支援更多效果
     },
 ]
 

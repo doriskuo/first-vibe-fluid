@@ -8,6 +8,8 @@ import { useScrollAnimation } from '@/hooks/useScrollAnimation'
 import WatchGear from './WatchGear'
 import VRHeadphones from './VRHeadphones'
 import VRScanEffect from './VRScanEffect'
+import EarcupParticles from './EarcupParticles'
+import HolographicCircuit from './HolographicCircuit'
 
 /**
  * GlassWaterDrop - 3D 玻璃水滴
@@ -56,6 +58,15 @@ export default function GlassWaterDrop() {
     // 掃描效果狀態
     const [scanVisible, setScanVisible] = useState(false)
     const [scanProgress, setScanProgress] = useState(0)
+
+    // 粒子效果狀態
+    const [particlesVisible, setParticlesVisible] = useState(false)
+    const [particlesOpacity, setParticlesOpacity] = useState(0)
+
+    // 全息電路狀態
+    const [circuitVisible, setCircuitVisible] = useState(false)
+    const [circuitOpacity, setCircuitOpacity] = useState(0)
+    const [circuitGrowth, setCircuitGrowth] = useState(0)
 
     // VR 耳機形狀參數
     const vrParams = useMemo(() => ({
@@ -323,15 +334,45 @@ export default function GlassWaterDrop() {
             headphonesRotation.current.copy(meshRef.current.rotation)
         }
 
-        // ===== 掃描效果 (scrollValue 4.5 → 5.5) =====
+        // ===== 掃描效果 (scrollValue 4.5+ 持續顯示) =====
         const scanStart = 4.5
-        const scanEnd = 5.5
-        if (scrollValue >= scanStart && scrollValue <= scanEnd && meshRef.current?.visible) {
+        if (scrollValue >= scanStart && meshRef.current?.visible) {
             setScanVisible(true)
-            const progress = (scrollValue - scanStart) / (scanEnd - scanStart)
-            setScanProgress(progress)
         } else {
             setScanVisible(false)
+        }
+
+        // DEBUG: Log scroll and visibility state
+        if (scrollValue > 4.0) {
+            console.log('scrollValue:', scrollValue.toFixed(2), 'meshVisible:', meshRef.current?.visible)
+        }
+
+        // ===== 粒子效果 (scrollValue 4.8+) =====
+        const particleStart = 4.8
+        if (scrollValue >= particleStart && meshRef.current?.visible) {
+            setParticlesVisible(true)
+            const pOpacity = Math.min((scrollValue - particleStart) / 0.3, 1)
+            setParticlesOpacity(pOpacity)
+        } else {
+            setParticlesVisible(false)
+            setParticlesOpacity(0)
+        }
+
+        // ===== 全息電路 (scrollValue 5.0+) =====
+        const circuitStart = 5.0
+        const circuitGrowEnd = 5.8
+        if (scrollValue >= circuitStart && meshRef.current?.visible) {
+            setCircuitVisible(true)
+            const cOpacity = Math.min((scrollValue - circuitStart) / 0.3, 1)
+            setCircuitOpacity(cOpacity)
+
+            // 電路生長進度
+            const growth = Math.min(Math.max((scrollValue - circuitStart) / (circuitGrowEnd - circuitStart), 0), 1)
+            setCircuitGrowth(growth)
+        } else {
+            setCircuitVisible(false)
+            setCircuitOpacity(0)
+            setCircuitGrowth(0)
         }
     })
 
@@ -623,6 +664,21 @@ export default function GlassWaterDrop() {
                 visible={scanVisible}
                 parentRotation={headphonesRotation.current}
             />
+
+            {/* 耳罩粒子效果 */}
+            <EarcupParticles
+                visible={particlesVisible}
+                opacity={particlesOpacity}
+                parentRotation={headphonesRotation.current}
+            />
+
+            {/* 全息電路板 - 暫時移除 */}
+            {/* <HolographicCircuit
+                visible={circuitVisible}
+                opacity={circuitOpacity}
+                growth={circuitGrowth}
+                parentRotation={headphonesRotation.current}
+            /> */}
         </>
     )
 }

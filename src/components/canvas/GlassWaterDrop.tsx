@@ -7,6 +7,7 @@ import * as THREE from 'three'
 import { useScrollAnimation } from '@/hooks/useScrollAnimation'
 import WatchGear from './WatchGear'
 import VRHeadphones from './VRHeadphones'
+import VRScanEffect from './VRScanEffect'
 
 /**
  * GlassWaterDrop - 3D 玻璃水滴
@@ -51,6 +52,10 @@ export default function GlassWaterDrop() {
     const [headphonesVisible, setHeadphonesVisible] = useState(false)
     const [headphonesOpacity, setHeadphonesOpacity] = useState(0)
     const headphonesRotation = useRef(new THREE.Euler())
+
+    // 掃描效果狀態
+    const [scanVisible, setScanVisible] = useState(false)
+    const [scanProgress, setScanProgress] = useState(0)
 
     // VR 耳機形狀參數
     const vrParams = useMemo(() => ({
@@ -316,6 +321,17 @@ export default function GlassWaterDrop() {
                 setHeadphonesOpacity(materialRef.current.opacity)
             }
             headphonesRotation.current.copy(meshRef.current.rotation)
+        }
+
+        // ===== 掃描效果 (scrollValue 4.5 → 5.5) =====
+        const scanStart = 4.5
+        const scanEnd = 5.5
+        if (scrollValue >= scanStart && scrollValue <= scanEnd && meshRef.current?.visible) {
+            setScanVisible(true)
+            const progress = (scrollValue - scanStart) / (scanEnd - scanStart)
+            setScanProgress(progress)
+        } else {
+            setScanVisible(false)
         }
     })
 
@@ -599,6 +615,13 @@ export default function GlassWaterDrop() {
                 visible={headphonesVisible}
                 parentRotation={headphonesRotation.current}
                 opacity={headphonesOpacity}
+            />
+
+            {/* 掃描效果 */}
+            <VRScanEffect
+                geometry={geometry}
+                visible={scanVisible}
+                parentRotation={headphonesRotation.current}
             />
         </>
     )

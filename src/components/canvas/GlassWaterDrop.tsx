@@ -258,13 +258,36 @@ export default function GlassWaterDrop() {
                     coreGroupRef.current.visible = false
                 }
 
-                // 齒輪只在 VR 轉正後才出現（morphT = 1）+ 跟著玻璃體旋轉
-                if (gearGroupRef.current) {
-                    gearGroupRef.current.visible = morphT >= 1 && meshRef.current.visible
-                    gearGroupRef.current.rotation.copy(meshRef.current.rotation)
+                // 齒輪淡入動畫 (3.3 - 3.8)
+                const gearStart = 3.3
+                const gearEnd = 3.8
+                let gearOpacity = 0
 
-                    // 齒輪獨立自轉動畫
-                    if (gearGroupRef.current.visible) {
+                if (scrollValue > gearStart) {
+                    const t = Math.min((scrollValue - gearStart) / (gearEnd - gearStart), 1)
+                    gearOpacity = t * t * (3 - 2 * t) // smoothstep
+                }
+
+                if (gearGroupRef.current) {
+                    const isGearVisible = gearOpacity > 0.01 && meshRef.current.visible
+                    gearGroupRef.current.visible = isGearVisible
+
+                    if (isGearVisible) {
+                        gearGroupRef.current.rotation.copy(meshRef.current.rotation)
+
+                        // 動態更新材質透明度
+                        gearGroupRef.current.traverse((child) => {
+                            if (child instanceof THREE.Mesh && child.material) {
+                                const materials = Array.isArray(child.material) ? child.material : [child.material];
+                                materials.forEach((mat) => {
+                                    mat.opacity = gearOpacity
+                                    mat.transparent = true
+                                    mat.depthWrite = gearOpacity > 0.9
+                                })
+                            }
+                        })
+
+                        // 齒輪獨立自轉動畫
                         const time = performance.now() * 0.0003  // 基礎時間
 
                         // ===== 左側群組（5顆）- 各自獨立轉速 =====

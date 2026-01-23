@@ -71,6 +71,10 @@ export const stages: ScrollStage[] = [
             uShapeMorph: [0.0, 1.0],
         },
     },
+    {
+        name: 'headphones',
+        durationVh: 1600, // 齒輪淡入 -> 耳罩彈出
+    },
 ]
 
 // 自動計算總頁面高度

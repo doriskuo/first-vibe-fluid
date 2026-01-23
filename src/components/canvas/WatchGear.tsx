@@ -17,6 +17,7 @@ interface WatchGearProps {
     gearStyle?: GearStyle   // 齒輪風格
     position?: [number, number, number]
     rotation?: [number, number, number]
+    opacity?: number        // 透明度 (0-1)
 }
 
 /**
@@ -39,6 +40,7 @@ const WatchGear = forwardRef<THREE.Group, WatchGearProps>(({
     gearStyle = 'classic',
     position = [0, 0, 0],
     rotation = [0, 0, 0],
+    opacity = 1.0,
 }, ref) => {
     // 基於風格調整參數
     const styleConfig = useMemo(() => {
@@ -94,8 +96,14 @@ const WatchGear = forwardRef<THREE.Group, WatchGearProps>(({
         emissive: glowColor,
         emissiveIntensity: glowIntensity,
         side: THREE.DoubleSide as THREE.Side,
-        depthTest: false,
+        depthTest: false, // 避免內部渲染穿插
+        transparent: true,
+        opacity: opacity,
+        depthWrite: opacity > 0.9, // 半透明時關閉 depthWrite 以避免遮擋問題，全顯時開啟
     }
+
+    // 如果完全透明，隱藏整個群組以優化效能
+    if (opacity <= 0.01) return null
 
     return (
         <group

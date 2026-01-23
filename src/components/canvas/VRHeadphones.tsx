@@ -4,6 +4,7 @@ import { useRef, useMemo } from 'react'
 import { useFrame } from '@react-three/fiber'
 import { MeshTransmissionMaterial } from '@react-three/drei'
 import * as THREE from 'three'
+import { useScrollAnimation } from '@/hooks/useScrollAnimation'
 
 interface VRHeadphonesProps {
     visible: boolean
@@ -22,6 +23,7 @@ export default function VRHeadphones({ visible, parentRotation, opacity }: VRHea
     const groupRef = useRef<THREE.Group>(null)
     const leftMatRef = useRef<any>(null)
     const rightMatRef = useRef<any>(null)
+    const { getState } = useScrollAnimation()
 
     // 鑽石切面耳罩幾何體
     const earCupGeometry = useMemo(() => {
@@ -166,10 +168,23 @@ export default function VRHeadphones({ visible, parentRotation, opacity }: VRHea
         return geometry
     }, [])
 
-    // 同步旋轉
+    // 同步旋轉與縮放動畫 (3.9 - 4.4)
     useFrame(() => {
         if (groupRef.current) {
             groupRef.current.rotation.copy(parentRotation)
+
+            // 獨立計算 Scale (3.9 - 4.4)
+            const { scrollValue } = getState()
+            const cupStart = 3.9
+            const cupEnd = 4.4
+
+            if (visible) {
+                const cupProgress = Math.min(Math.max((scrollValue - cupStart) / (cupEnd - cupStart), 0), 1)
+                // smoothstep curve for smoother pop-up
+                const cupScale = cupProgress * cupProgress * (3 - 2 * cupProgress)
+
+                groupRef.current.scale.set(cupScale, cupScale, cupScale)
+            }
         }
 
         if (leftMatRef.current) leftMatRef.current.opacity = opacity

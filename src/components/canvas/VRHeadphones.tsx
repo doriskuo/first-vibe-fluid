@@ -178,14 +178,15 @@ export default function VRHeadphones({ visible, parentRotation, opacity }: VRHea
 
     if (!visible) return null
 
-    // 位置（稍微往外移讓耳罩更突出）
+    // 位置（注意：VR 本體有旋轉 90 度，所以 Y 軸變成深度方向）
     const xOffset = 0.38
-    const yOffset = -0.1
+    const yOffset = -0.22  // 往深處後退
+    const zOffset = 0
 
     return (
         <group ref={groupRef}>
             {/* 左側耳罩 - 外側朝左（鏡像讓凸起朝外） */}
-            <mesh geometry={earCupGeometry} position={[-xOffset, yOffset, 0]} scale={[-1, 1, 1]}>
+            <mesh geometry={earCupGeometry} position={[-xOffset, yOffset, zOffset]} scale={[-1, 1, 1]}>
                 <meshPhysicalMaterial
                     ref={leftMatRef}
                     color="#f8fcff"
@@ -205,7 +206,7 @@ export default function VRHeadphones({ visible, parentRotation, opacity }: VRHea
             </mesh>
 
             {/* 右側耳罩 - 外側朝右 */}
-            <mesh geometry={rightEarCupGeometry} position={[xOffset, yOffset, 0]}>
+            <mesh geometry={rightEarCupGeometry} position={[xOffset, yOffset, zOffset]}>
                 <meshPhysicalMaterial
                     ref={rightMatRef}
                     color="#f8fcff"

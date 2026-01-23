@@ -335,6 +335,11 @@ export default function GlassWaterDrop() {
             <spotLight position={[0, 5, 10]} angle={0.3} penumbra={1} intensity={1.5} />
             <pointLight position={[-10, -10, -10]} intensity={1.5} color="#a8d8ff" />
 
+            {/* 側面補光 - 減少耳罩邊緣黑影 */}
+            <pointLight position={[10, 0, 0]} intensity={0.8} color="#ffffff" />
+            <pointLight position={[-10, 0, 0]} intensity={0.8} color="#ffffff" />
+            <pointLight position={[0, 10, 0]} intensity={0.6} color="#e0f0ff" />
+
             <mesh
                 ref={meshRef}
                 geometry={geometry}

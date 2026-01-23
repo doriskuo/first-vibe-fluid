@@ -206,17 +206,18 @@ export default function VRHeadphones({ visible, parentRotation, opacity }: VRHea
                     ref={leftMatRef}
                     color="#f8fcff"
                     metalness={0}
-                    roughness={0.02}
-                    transmission={0.95}
-                    thickness={0.5}
-                    ior={1.5}
+                    roughness={0.01}
+                    transmission={0.98}
+                    thickness={0.05}
+                    ior={1.2}
                     transparent={true}
                     opacity={opacity}
-                    clearcoat={1}
+                    clearcoat={0}
                     clearcoatRoughness={0}
                     envMapIntensity={0}
                     side={THREE.DoubleSide}
                     depthWrite={false}
+                    depthTest={false}
                 />
             </mesh>
 
@@ -226,17 +227,18 @@ export default function VRHeadphones({ visible, parentRotation, opacity }: VRHea
                     ref={rightMatRef}
                     color="#f8fcff"
                     metalness={0}
-                    roughness={0.02}
-                    transmission={0.95}
-                    thickness={0.5}
-                    ior={1.5}
+                    roughness={0.01}
+                    transmission={0.98}
+                    thickness={0.05}
+                    ior={1.2}
                     transparent={true}
                     opacity={opacity}
-                    clearcoat={1}
+                    clearcoat={0}
                     clearcoatRoughness={0}
                     envMapIntensity={0}
                     side={THREE.DoubleSide}
                     depthWrite={false}
+                    depthTest={false}
                 />
             </mesh>
         </group>

@@ -88,8 +88,15 @@
   cursor: none;
 }
 
+/* Leva 面板顯示正常滑鼠 */
+[class*="leva"],
+[class*="leva"] * {
+  cursor: auto !important;
+}
+
 html {
-  scroll-behavior: auto; /* Lenis 會處理 */
+  scroll-behavior: auto;
+  /* Lenis 會處理 */
 }
 
 body {
@@ -135,18 +142,24 @@ body {
 
 /* 滾動動畫 keyframes */
 @keyframes float {
-  0%, 100% {
+
+  0%,
+  100% {
     transform: translateY(0);
   }
+
   50% {
     transform: translateY(-10px);
   }
 }
 
 @keyframes pulse-glow {
-  0%, 100% {
+
+  0%,
+  100% {
     box-shadow: 0 0 20px rgba(74, 143, 199, 0.2);
   }
+
   50% {
     box-shadow: 0 0 40px rgba(74, 143, 199, 0.4);
   }
@@ -198,6 +211,7 @@ body {
   * {
     @apply border-border outline-ring/50;
   }
+
   body {
     @apply bg-background text-foreground;
   }

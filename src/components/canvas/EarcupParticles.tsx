@@ -67,8 +67,11 @@ void main() {
     // 確保光暈不覆蓋核心
     glow *= (1.0 - core);
     
-    // 合併顏色：核心用純色，光暈用發光色
-    vec3 color = uCoreColor * core + uGlowColor * glow;
+    // 雙色漸層：根據 seed 混合兩色
+    vec3 particleColor = mix(uCoreColor, uGlowColor, vSeed);
+    
+    // 合併顏色
+    vec3 color = particleColor * (core + glow);
     float alpha = (core + glow * 0.6) * uOpacity;
     
     if (alpha < 0.01) discard;
@@ -88,8 +91,8 @@ export default function EarcupParticles({
 
     // Leva 控制
     const controls = useControls('Particles', {
-        coreColor: '#00CED1',
-        glowColor: '#00FFFF',
+        coreColor: { value: '#00CED1', label: 'Color 1 (Cyan)' },
+        glowColor: { value: '#FF1493', label: 'Color 2 (Pink)' },
         coreRadius: { value: 0.25, min: 0.1, max: 0.5, step: 0.05 },
         glowRadius: { value: 0.85, min: 0.3, max: 1.0, step: 0.05 },
         glowIntensity: { value: 0.7, min: 0.0, max: 2.0, step: 0.1 },

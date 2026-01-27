@@ -21,6 +21,7 @@ interface Agent {
     visualTrail: Point[]
     stepsTaken: number
     maxSteps: number
+    spawnDelay: number
 }
 
 const AGENT_COUNT = 6 // Even sparser (User: "分開一點")
@@ -74,16 +75,20 @@ export default function CyberpunkGridCanvas() {
         const initAgents = () => {
             agentsRef.current = []
             for (let i = 0; i < AGENT_COUNT; i++) {
-                spawnAgent()
+                spawnAgent(true)
             }
         }
 
-        const spawnAgent = () => {
+        const spawnAgent = (initialDelay = false) => {
             const startNodeId = getRandomSafeNodeId()
             if (!startNodeId || !graphRef.current) return
 
             const startNode = graphRef.current.nodes.get(startNodeId)!
             const speed = AGENT_SPEED_MIN + Math.random() * (AGENT_SPEED_MAX - AGENT_SPEED_MIN)
+
+            const delay = initialDelay
+                ? Math.floor(Math.random() * 200)
+                : Math.floor(Math.random() * 60)
 
             agentsRef.current.push({
                 currentNode: startNodeId,
@@ -97,7 +102,8 @@ export default function CyberpunkGridCanvas() {
                 active: true,
                 visualTrail: [],
                 stepsTaken: 0,
-                maxSteps: Math.floor(3 + Math.random() * 5)
+                maxSteps: Math.floor(4 + Math.random() * 6),
+                spawnDelay: delay
             })
         }
 
@@ -107,9 +113,15 @@ export default function CyberpunkGridCanvas() {
             const cy = canvas.height / 2
 
             agentsRef.current = agentsRef.current.filter(a => a.active)
-            while (agentsRef.current.length < AGENT_COUNT) spawnAgent()
+            while (agentsRef.current.length < AGENT_COUNT) spawnAgent(false)
 
             agentsRef.current.forEach(agent => {
+                // Handle Spawn Delay
+                if (agent.spawnDelay > 0) {
+                    agent.spawnDelay--
+                    return
+                }
+
                 agent.progress += agent.speed
 
                 if (agent.progress >= 1) {
@@ -125,15 +137,11 @@ export default function CyberpunkGridCanvas() {
 
                     const neighbors = curr.neighbors
                     let validNeighbors = neighbors.filter(id => id !== agent.lastNodeId)
-                    const downNeighbors = validNeighbors.filter(id => {
-                        const n = graphRef.current!.nodes.get(id)
-                        return n && n.y >= curr.y - 0.1
-                    })
 
-                    let nextId: string | null = null
-                    if (downNeighbors.length > 0) nextId = downNeighbors[Math.floor(Math.random() * downNeighbors.length)]
-                    else if (validNeighbors.length > 0) nextId = validNeighbors[Math.floor(Math.random() * validNeighbors.length)]
-                    else { agent.active = false; return }
+                    // Pure random choice (No Downward Bias) to fix "Too similar trajectories"
+                    const nextId = validNeighbors.length > 0
+                        ? validNeighbors[Math.floor(Math.random() * validNeighbors.length)]
+                        : null
 
                     if (!nextId) { agent.active = false; return }
 

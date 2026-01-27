@@ -3,6 +3,7 @@
 import { useRef, useMemo, useEffect } from 'react'
 import { useFrame, useThree } from '@react-three/fiber'
 import * as THREE from 'three'
+import { totalPageHeightVh, getCurrentStageName, getStageInfo } from '@/config/scrollTimeline'
 
 import vertexShader from '@/shaders/fluidGradient.vert'
 import fragmentShader from '@/shaders/fluidGradient.frag'
@@ -45,6 +46,7 @@ function FullscreenFluid() {
     uCyanColor: { value: new THREE.Vector3(0.5, 0.85, 1.0) },
     uPinkColor: { value: new THREE.Vector3(1.0, 0.55, 0.7) },
     uLavenderColor: { value: new THREE.Vector3(0.75, 0.6, 0.9) },
+    uBackgroundColor: { value: new THREE.Vector3(0.97, 0.96, 0.95) },
   }), [size.width, size.height])
 
   useEffect(() => {
@@ -79,20 +81,76 @@ function FullscreenFluid() {
     material.uniforms.uDarkEdgeStrength.value = shaderConfig.darkEdgeStrength
 
     // Convert Leva RGB colors (0-255) to shader (0-1)
+
+    // --- Darken Logic for Cyberpunk Mode ---
+    // If scrollValue corresponds to cyberpunkEntry (or later), we fade to black.
+    // Based on scrollTimeline.ts:
+    // cyberpunkEntry starts after headphones. headphones duration is 1000vh.
+    // We need to check useScrollAnimation's currentStage or just match the logic here.
+    // Since we don't have direct access to 'currentStage' inside independent useFrame easily without prop drilling,
+    // let's infer it from scrollValue or pass it in. 
+    // Actually, we can get currentStage from the hook if we used 'getState', but we are in useFrame.
+    // Let's use the raw scrollValue.
+    // headphones end at: liquid(200)+teardrop(300)+bounce(100)+glass(400)+rgbGlow(500)+2dFadeout(600)+3dGlass(300)+shapeMorph(500)+headphones(1000) = 3900vh approx?
+    // Let's just import 'computedStages' to be precise.
+
+    // Simplified approach: calculated in useScrollAnimation hook? No, let's just do it here.
+    // We can infer "End of World" by scrollValue > some threshold.
+    // But better yet, let's just use a uniform uDarkness that we animate?
+    // No, we can just multiply color values here.
+
+    // Let's get the absolute progress.
+    const rawScroll = scrollValue / (totalPageHeightVh / 1000) // approx reverse calc
+
+    let darkness = 0
+
+    // Let's just re-calculate darkness based on the same logic as Overlay.
+    // Actually, let's just use a simple threshold for now to ensure it works.
+    // If we assume the order is fixed: 
+    // If scrollValue > (totalHeight - cyberpunkParts) ...
+
+    // BETTER WAY: Import computedStages and use it.
+    const currentStageName = getCurrentStageName(scrollValue / (totalPageHeightVh / 1000))
+    // Note: ensure getCurrentStageName import is available
+
+    if (['cyberpunkEntry', 'descent', 'featureMorph', 'featureProjection'].includes(currentStageName)) {
+      darkness = 1.0; // Fully black for now, or fade in? 
+      // Let's fade in during cyberpunkEntry
+      if (currentStageName === 'cyberpunkEntry') {
+        // Calculate local progress
+        const stageInfo = getStageInfo('cyberpunkEntry')
+        if (stageInfo) {
+          const currentVh = (scrollValue / (totalPageHeightVh / 1000)) * totalPageHeightVh
+          const progress = (currentVh - stageInfo.startVh) / stageInfo.durationVh
+          darkness = Math.min(progress * 2, 1) // Fade in quickly first half
+        }
+      }
+    }
+
+    const darken = (1 - darkness)
+
     material.uniforms.uCyanColor.value.set(
-      shaderConfig.cyanColor.r / 255,
-      shaderConfig.cyanColor.g / 255,
-      shaderConfig.cyanColor.b / 255
+      (shaderConfig.cyanColor.r / 255) * darken,
+      (shaderConfig.cyanColor.g / 255) * darken,
+      (shaderConfig.cyanColor.b / 255) * darken
     )
     material.uniforms.uPinkColor.value.set(
-      shaderConfig.pinkColor.r / 255,
-      shaderConfig.pinkColor.g / 255,
-      shaderConfig.pinkColor.b / 255
+      (shaderConfig.pinkColor.r / 255) * darken,
+      (shaderConfig.pinkColor.g / 255) * darken,
+      (shaderConfig.pinkColor.b / 255) * darken
     )
     material.uniforms.uLavenderColor.value.set(
-      shaderConfig.lavenderColor.r / 255,
-      shaderConfig.lavenderColor.g / 255,
-      shaderConfig.lavenderColor.b / 255
+      (shaderConfig.lavenderColor.r / 255) * darken,
+      (shaderConfig.lavenderColor.g / 255) * darken,
+      (shaderConfig.lavenderColor.b / 255) * darken
+    )
+
+    // Animate Background Color
+    // Default Light: 0.97, 0.96, 0.95
+    material.uniforms.uBackgroundColor.value.set(
+      0.97 * darken,
+      0.96 * darken,
+      0.95 * darken
     )
 
     // Mouse

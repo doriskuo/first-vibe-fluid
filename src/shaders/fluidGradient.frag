@@ -20,6 +20,7 @@ uniform float uDarkEdgeStrength;
 uniform vec3 uCyanColor;
 uniform vec3 uPinkColor;
 uniform vec3 uLavenderColor;
+uniform vec3 uBackgroundColor;
 
 #define PI 3.14159265359
 
@@ -343,8 +344,8 @@ void main() {
   float fadeOut = 1.0 - smoothstep(1.5, 2.1, uScrollProgress);
   finalOpacity *= fadeOut;
   
-  vec3 bgColor = vec3(0.97, 0.96, 0.95);
-  finalColor = mix(bgColor, finalColor, blob * finalOpacity);
+  // vec3 bgColor = vec3(0.97, 0.96, 0.95); // Old hardcoded
+  finalColor = mix(uBackgroundColor, finalColor, blob * finalOpacity);
   
   float vignette = 1.0 - dot(uvAspect * 0.8, uvAspect * 0.8);
   finalColor *= 0.9 + vignette * 0.1;

@@ -3,7 +3,7 @@ import React from 'react'
 
 export default function BrandHeader() {
     return (
-        <header className="fixed top-0 left-0 w-full z-50 p-8 flex justify-between items-start pointer-events-none mix-blend-difference text-white">
+        <header className="fixed top-0 left-0 w-full z-60 p-8 flex justify-between items-start pointer-events-none mix-blend-difference text-white">
             <div className="flex items-center gap-4">
                 <div className="w-10 h-10 border border-white/30 flex items-center justify-center rounded-full">
                     <div className="w-2 h-2 bg-white rounded-full animate-pulse" />

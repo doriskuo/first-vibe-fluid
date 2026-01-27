@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useRef } from 'react'
+import { createContext, useContext, useEffect, useRef, useState } from 'react'
 import Lenis from '@studio-freight/lenis'
 import gsap from 'gsap'
 import { ScrollTrigger } from 'gsap/ScrollTrigger'
@@ -9,6 +9,20 @@ import { ScrollTrigger } from 'gsap/ScrollTrigger'
 if (typeof window !== 'undefined') {
     gsap.registerPlugin(ScrollTrigger)
 }
+
+interface ScrollContextType {
+    lenis: Lenis | null
+    isLocked: boolean
+    setLocked: (locked: boolean) => void
+}
+
+const ScrollContext = createContext<ScrollContextType>({
+    lenis: null,
+    isLocked: false,
+    setLocked: () => { },
+})
+
+export const useScrollContext = () => useContext(ScrollContext)
 
 /**
  * Lenis 平滑滾動 Provider
@@ -21,6 +35,7 @@ export default function LenisProvider({
     children: React.ReactNode
 }) {
     const lenisRef = useRef<Lenis | null>(null)
+    const [isLocked, setIsLocked] = useState(false)
 
     useEffect(() => {
         // 初始化 Lenis
@@ -53,5 +68,23 @@ export default function LenisProvider({
         }
     }, [])
 
-    return <>{children}</>
+    // 處理鎖定邏輯
+    useEffect(() => {
+        const lenis = lenisRef.current
+        if (!lenis) return
+
+        if (isLocked) {
+            lenis.stop()
+            document.body.style.overflow = 'hidden' // 防止原生滾動
+        } else {
+            lenis.start()
+            document.body.style.overflow = ''
+        }
+    }, [isLocked])
+
+    return (
+        <ScrollContext.Provider value={{ lenis: lenisRef.current, isLocked, setLocked: setIsLocked }}>
+            {children}
+        </ScrollContext.Provider>
+    )
 }

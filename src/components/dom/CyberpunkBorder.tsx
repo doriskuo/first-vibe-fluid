@@ -24,7 +24,7 @@ export default function CyberpunkBorder() {
 
     return (
         <motion.div
-            className="fixed inset-2 z-40 pointer-events-none"
+            className="fixed inset-2 z-55 pointer-events-none"
             style={{ opacity }}
         >
             {/* Main Glowing Border with Flicker */}

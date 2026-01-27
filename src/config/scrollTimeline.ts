@@ -73,7 +73,23 @@ export const stages: ScrollStage[] = [
     },
     {
         name: 'headphones',
-        durationVh: 3000, // 增加到 3000vh 以支援更多效果
+        durationVh: 1000,
+    },
+    {
+        name: 'cyberpunkEntry',
+        durationVh: 500, // Background turns black, UI appears, PREPARE FOR LOCK
+    },
+    {
+        name: 'descent',
+        durationVh: 1500, // Particles move UP, VR moves DOWN
+    },
+    {
+        name: 'featureMorph',
+        durationVh: 2000, // Scroll to Morph: Construct -> Explode -> Scan
+    },
+    {
+        name: 'featureProjection',
+        durationVh: 1000, // Holographic projection
     },
 ]
 

@@ -2,6 +2,7 @@
 
 import BrandHeader from '@/components/dom/BrandHeader'
 import CyberpunkBorder from '@/components/dom/CyberpunkBorder'
+import CyberpunkOverlay from '@/components/dom/CyberpunkOverlay'
 import dynamic from 'next/dynamic'
 import { totalPageHeightVh } from '@/config/scrollTimeline'
 
@@ -25,7 +26,10 @@ export default function Home() {
       <BrandHeader />
       <CyberpunkBorder />
 
-      <div className="fixed inset-0 w-screen h-screen z-0">
+      {/* Phase 2: Cyberpunk Overlay & Lock */}
+      <CyberpunkOverlay />
+
+      <div className="fixed inset-0 w-screen h-screen z-40 pointer-events-none">
         <Scene>
           <FluidBackground />
           <GlassWaterDrop />

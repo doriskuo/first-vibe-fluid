@@ -1,5 +1,7 @@
 'use client'
 
+import BrandHeader from '@/components/dom/BrandHeader'
+import CyberpunkBorder from '@/components/dom/CyberpunkBorder'
 import dynamic from 'next/dynamic'
 import { totalPageHeightVh } from '@/config/scrollTimeline'
 
@@ -19,6 +21,10 @@ const GlassWaterDrop = dynamic(() => import('@/components/canvas/GlassWaterDrop'
 export default function Home() {
   return (
     <>
+      {/* Phase 0: Early Polish UI */}
+      <BrandHeader />
+      <CyberpunkBorder />
+
       <div className="fixed inset-0 w-screen h-screen z-0">
         <Scene>
           <FluidBackground />

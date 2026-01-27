@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
-import LevaWrapper from "@/components/debug/LevaWrapper";
 import LenisProvider from "@/components/providers/LenisProvider";
 import CustomCursor from "@/components/dom/CustomCursor";
 
@@ -35,7 +34,6 @@ export default function RootLayout({
         suppressHydrationWarning
       >
         <CustomCursor />
-        <LevaWrapper />
         <LenisProvider>
           {children}
         </LenisProvider>

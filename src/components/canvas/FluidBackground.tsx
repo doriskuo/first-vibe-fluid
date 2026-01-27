@@ -7,15 +7,28 @@ import { totalPageHeightVh, getCurrentStageName, getStageInfo } from '@/config/s
 
 import vertexShader from '@/shaders/fluidGradient.vert'
 import fragmentShader from '@/shaders/fluidGradient.frag'
-import { useShaderControls } from '@/components/debug/useShaderControls'
 import { useScrollAnimation } from '@/hooks/useScrollAnimation'
 
 function FullscreenFluid() {
   const meshRef = useRef<THREE.Mesh>(null)
   const { viewport, pointer, size } = useThree()
 
-  // Leva controls for real-time parameter adjustment
-  const shaderConfig = useShaderControls()
+  // Hardcoded Config (Previous Leva defaults)
+  const shaderConfig = {
+    bounceStrength: 2.0,
+    bounceHorizontal: 0.5,
+    springStiffness: 350,
+    springDamping: 12,
+    glassOpacity: 0.65,
+    glassBrightness: 1.0,
+    rgbIntensity: 0.8,
+    rgbPulseSpeed: 1.0,
+    rimLightStrength: 0.8,
+    darkEdgeStrength: 0.35,
+    cyanColor: { r: 128, g: 217, b: 255 },
+    pinkColor: { r: 255, g: 140, b: 179 },
+    lavenderColor: { r: 191, g: 153, b: 230 }
+  }
 
   // New scroll animation hook with dynamic physics config
   const { springProgress } = useScrollAnimation({

@@ -2,7 +2,6 @@
 
 import { useRef, useMemo } from 'react'
 import { useFrame } from '@react-three/fiber'
-import { useControls } from 'leva'
 import * as THREE from 'three'
 
 interface EarcupParticlesProps {
@@ -89,15 +88,15 @@ export default function EarcupParticles({
     const leftPointsRef = useRef<THREE.Points>(null)
     const rightPointsRef = useRef<THREE.Points>(null)
 
-    // Leva 控制
-    const controls = useControls('Particles', {
-        coreColor: { value: '#00CED1', label: 'Color 1 (Cyan)' },
-        glowColor: { value: '#FF1493', label: 'Color 2 (Pink)' },
-        coreRadius: { value: 0.25, min: 0.1, max: 0.5, step: 0.05 },
-        glowRadius: { value: 0.85, min: 0.3, max: 1.0, step: 0.05 },
-        glowIntensity: { value: 0.7, min: 0.0, max: 2.0, step: 0.1 },
-        size: { value: 15, min: 5, max: 40, step: 1 },
-    })
+    // Hardcoded Config (Previous Leva defaults)
+    const config = {
+        coreColor: '#00CED1',
+        glowColor: '#FF1493',
+        coreRadius: 0.25,
+        glowRadius: 0.85,
+        glowIntensity: 0.7,
+        size: 15,
+    }
 
     // 初始化粒子資料
     const { positions, seeds } = useMemo(() => {
@@ -121,12 +120,12 @@ export default function EarcupParticles({
     const uniforms = useMemo(() => ({
         uTime: { value: 0 },
         uAggregation: { value: 0 },
-        uSize: { value: controls.size },
-        uCoreColor: { value: new THREE.Color(controls.coreColor) },
-        uGlowColor: { value: new THREE.Color(controls.glowColor) },
-        uCoreRadius: { value: controls.coreRadius },
-        uGlowRadius: { value: controls.glowRadius },
-        uGlowIntensity: { value: controls.glowIntensity },
+        uSize: { value: config.size },
+        uCoreColor: { value: new THREE.Color(config.coreColor) },
+        uGlowColor: { value: new THREE.Color(config.glowColor) },
+        uCoreRadius: { value: config.coreRadius },
+        uGlowRadius: { value: config.glowRadius },
+        uGlowIntensity: { value: config.glowIntensity },
         uOpacity: { value: 1 },
     }), [])
 
@@ -146,12 +145,12 @@ export default function EarcupParticles({
             mat.uniforms.uTime.value = time
             mat.uniforms.uAggregation.value = aggregation
             mat.uniforms.uOpacity.value = opacity
-            mat.uniforms.uSize.value = controls.size
-            mat.uniforms.uCoreColor.value.set(controls.coreColor)
-            mat.uniforms.uGlowColor.value.set(controls.glowColor)
-            mat.uniforms.uCoreRadius.value = controls.coreRadius
-            mat.uniforms.uGlowRadius.value = controls.glowRadius
-            mat.uniforms.uGlowIntensity.value = controls.glowIntensity
+            mat.uniforms.uSize.value = config.size
+            mat.uniforms.uCoreColor.value.set(config.coreColor)
+            mat.uniforms.uGlowColor.value.set(config.glowColor)
+            mat.uniforms.uCoreRadius.value = config.coreRadius
+            mat.uniforms.uGlowRadius.value = config.glowRadius
+            mat.uniforms.uGlowIntensity.value = config.glowIntensity
         }
 
         updateUniforms(leftPointsRef.current)

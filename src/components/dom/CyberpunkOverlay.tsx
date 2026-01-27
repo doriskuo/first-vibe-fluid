@@ -6,6 +6,7 @@ import { useScrollContext } from '@/components/providers/LenisProvider'
 import { totalPageHeightVh, getCurrentStageName, scrollConfig } from '@/config/scrollTimeline'
 import { motion, useMotionValueEvent } from 'framer-motion'
 import { Zap, Power } from 'lucide-react'
+import CyberpunkGridCanvas from './CyberpunkGridCanvas'
 
 export default function CyberpunkOverlay() {
     const { springProgress } = useScrollAnimation()
@@ -71,6 +72,10 @@ export default function CyberpunkOverlay() {
                         backgroundSize: '80px'
                     }}
                 />
+
+                {/* 2. Dynamic Light Overlay (Canvas) */}
+                <CyberpunkGridCanvas />
+
                 {/* Scanlines */}
                 <div className="absolute inset-0 opacity-[0.05]"
                     style={{ backgroundImage: 'linear-gradient(rgba(0,243,255,1) 1px, transparent 1px)', backgroundSize: '100% 3px' }}

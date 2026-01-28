@@ -26,9 +26,9 @@ export default function CyberpunkOverlay() {
 
             // FADEOUT LOGIC: At 6.2 (Theater Space start + delay), fade out the grid/particles
             // Matches SphericalBackground entry at 6.2
-            if (rawProgress > 6.2) {
+            if (latest > 6.2) {
                 // Fade out over 0.8 units (same as sphere fade in)
-                const fadeProgress = Math.min((rawProgress - 6.2) / 0.8, 1);
+                const fadeProgress = Math.min((latest - 6.2) / 0.8, 1);
                 targetOpacity = 1 - fadeProgress;
             }
 

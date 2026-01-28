@@ -101,21 +101,36 @@ export default function CyberpunkOverlay() {
                     </div>
                 </div>
 
-                {/* Central Interaction Button - Moved to BOTTOM */}
-                <div className="flex flex-col items-center gap-8">
+                {/* Central Interaction Button - Moved to BOTTOM RIGHT */}
+                <div className="absolute bottom-8 right-6 md:bottom-10 md:right-16 flex flex-col items-center gap-4 z-50">
                     <div className="relative group">
-                        <div className="absolute inset-0 bg-[#00f3ff] blur-[40px] opacity-20 group-hover:opacity-40 transition-opacity" />
+                        {/* Glow Effect */}
+                        <div className="absolute inset-0 bg-[#00f3ff] rounded-full blur-[20px] opacity-20 group-hover:opacity-60 transition-opacity duration-500 will-change-transform" />
+
+                        {/* Power Button */}
                         <button
                             onClick={handleInitialize}
-                            className="pointer-events-auto relative w-64 h-20 bg-black/80 border border-[#00f3ff] text-[#00f3ff] font-bold text-xl tracking-[0.2em] uppercase hover:bg-[#00f3ff] hover:text-black transition-all duration-300 flex items-center justify-center gap-4 group-hover:shadow-[0_0_30px_rgba(0,243,255,0.4)]"
+                            className="pointer-events-auto relative w-14 h-14 md:w-16 md:h-16 rounded-full bg-black/90 border-2 border-[#00f3ff] text-[#00f3ff] 
+                                     hover:bg-[#00f3ff] hover:text-black transition-all duration-300 ease-out 
+                                     flex items-center justify-center group-hover:scale-110 group-hover:shadow-[0_0_40px_rgba(0,243,255,0.4)]"
                         >
-                            <Power className="w-6 h-6" />
-                            Initialize
+                            <Power className="w-6 h-6 md:w-7 md:h-7 stroke-[2px]" />
                         </button>
+
+                        {/* Orbit Ring Animation */}
+                        <div className="absolute inset-[-6px] border border-[#00f3ff]/30 rounded-full w-[calc(100%+12px)] h-[calc(100%+12px)] animate-spin-slow pointer-events-none"
+                            style={{ borderTopColor: 'transparent', borderLeftColor: 'transparent' }} />
                     </div>
-                    <span className="text-xs text-white/40 font-mono tracking-widest animate-pulse">
-                        AWAITING USER INPUT
-                    </span>
+
+                    {/* Text Below */}
+                    <div className="flex flex-col items-center gap-1">
+                        <span className="text-[#00f3ff] font-bold text-xs tracking-[0.2em] uppercase drop-shadow-[0_0_5px_rgba(0,243,255,0.8)]">
+                            INITIALIZE
+                        </span>
+                        <span className="text-[9px] text-white/50 font-mono tracking-widest animate-pulse scale-90">
+                            SYSTEM_READY
+                        </span>
+                    </div>
                 </div>
 
                 {/* Decorative Footer */}

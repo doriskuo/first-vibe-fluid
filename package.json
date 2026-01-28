@@ -21,6 +21,7 @@
     "next": "16.1.1",
     "react": "19.2.3",
     "react-dom": "19.2.3",
+    "simplex-noise": "^4.0.3",
     "split-type": "^0.3.4",
     "tailwind-merge": "^3.4.0",
     "three": "^0.182.0",

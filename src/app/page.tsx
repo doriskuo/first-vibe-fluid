@@ -23,6 +23,10 @@ const SphericalBackground = dynamic(() => import('@/components/canvas/SphericalB
   ssr: false,
 })
 
+const AudioVisualizer = dynamic(() => import('@/components/canvas/AudioVisualizer'), {
+  ssr: false,
+})
+
 export default function Home() {
   return (
     <>
@@ -37,6 +41,7 @@ export default function Home() {
         <Scene>
           <FluidBackground />
           <SphericalBackground />
+          <AudioVisualizer />
           <GlassWaterDrop />
         </Scene>
       </div>

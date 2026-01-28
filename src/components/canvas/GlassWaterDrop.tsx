@@ -20,6 +20,7 @@ export default function GlassWaterDrop() {
     const materialRef = useRef<any>(null)
     const coreGroupRef = useRef<THREE.Group>(null)  // 內部機械結構
     const ringRef = useRef<THREE.Mesh>(null)        // 霓虹光環
+    const containerRef = useRef<THREE.Group>(null)  // 新增：容器 ref 用於整體縮放移動 (HUD Descent)
 
     // 發光材質 refs（用於動態調整亮度）
     const ring1MatRef = useRef<THREE.MeshStandardMaterial>(null)
@@ -166,6 +167,41 @@ export default function GlassWaterDrop() {
         if (!meshRef.current || !materialRef.current) return
 
         const { scrollValue } = getState()
+
+        // ===== Phase 3: The Descent Animation (Container Only) =====
+        // Descent starts at 5.2 (after lock screen/init)
+        if (containerRef.current) {
+            const descentStart = 5.2
+            const descentEnd = 6.2 // 1000vh duration
+
+            // Default State
+            let scale = 1.0
+            let posX = 0
+            let posY = 0
+            let rotZ = 0
+            let rotY = 0
+
+            if (scrollValue > descentStart) {
+                const descentProgress = Math.min(Math.max((scrollValue - descentStart) / (descentEnd - descentStart), 0), 1)
+
+                // Smoothstep interpolation
+                const t = descentProgress * descentProgress * (3 - 2 * descentProgress)
+
+                // Target: Top Right Corner (HUD Mode)
+                scale = 1.0 - (t * 0.65) // 1.0 -> 0.35
+                posX = t * 0.6      // More Right (0 -> 0.6) - Reduced from 0.8 to prevent clipping
+                posY = t * 0.25     // Higher (0 -> 0.25) - Reduced from 0.35 to prevent clipping
+
+                // Slight tilt
+                rotZ = t * 0.05
+                rotY = t * -0.15
+            }
+
+            containerRef.current.scale.set(scale, scale, scale)
+            containerRef.current.position.set(posX, posY, 0)
+            containerRef.current.rotation.z = rotZ
+            containerRef.current.rotation.y = rotY
+        }
 
         // 3D 水滴淡入（使用 smoothstep 曲線，更平滑）
         const fadeInStart = 2.0  // 提早開始
@@ -397,288 +433,291 @@ export default function GlassWaterDrop() {
             <pointLight position={[-10, 0, 0]} intensity={0.8} color="#ffffff" />
             <pointLight position={[0, 10, 0]} intensity={0.6} color="#e0f0ff" />
 
-            <mesh
-                ref={meshRef}
-                geometry={geometry}
-                visible={false}
-                scale={[0.15, 0.15, 0.15]}
-                onPointerDown={handlePointerDown}
-            >
-                <MeshTransmissionMaterial
-                    ref={materialRef}
-                    backside
-                    samples={32}
-                    resolution={1024}
-                    thickness={3.0}
-                    roughness={0.05}
-                    ior={1.5}
-                    clearcoat={1}
-                    chromaticAberration={0.1}
-                    anisotropy={0.6}
-                    distortion={0.3}
-                    distortionScale={0.2}
-                    temporalDistortion={0.05}
-                    attenuationDistance={0.8}
-                    attenuationColor="#ffffff"
-                    color="#f0f8ff"
-                    transparent={true}
-                    opacity={0}
-                    depthWrite={false}
-                />
-            </mesh>
-
-            {/* 內部發光結構 - 線條+光暈風格 */}
-            <group ref={coreGroupRef} scale={[0.15, 0.15, 0.15]}>
-                {/* 主光環 - 水平 */}
-                <mesh ref={ringRef} rotation={[Math.PI / 2, 0, 0]}>
-                    <torusGeometry args={[0.5, 0.015, 16, 64]} />
-                    <meshStandardMaterial
-                        ref={ring1MatRef}
-                        color="#000000"
-                        emissive="#00ffff"
-                        emissiveIntensity={4}
-                        transparent
-                        opacity={0.9}
+            {/* Container Group for Descent Animation - 外部容器只負責整體位移縮放 */}
+            <group ref={containerRef}>
+                <mesh
+                    ref={meshRef}
+                    geometry={geometry}
+                    visible={false}
+                    scale={[0.15, 0.15, 0.15]}
+                    onPointerDown={handlePointerDown}
+                >
+                    <MeshTransmissionMaterial
+                        ref={materialRef}
+                        backside
+                        samples={32}
+                        resolution={1024}
+                        thickness={3.0}
+                        roughness={0.05}
+                        ior={1.5}
+                        clearcoat={1}
+                        chromaticAberration={0.1}
+                        anisotropy={0.6}
+                        distortion={0.3}
+                        distortionScale={0.2}
+                        temporalDistortion={0.05}
+                        attenuationDistance={0.8}
+                        attenuationColor="#ffffff"
+                        color="#f0f8ff"
+                        transparent={true}
+                        opacity={0}
+                        depthWrite={false}
                     />
                 </mesh>
 
-                {/* 第二光環 - 傾斜 */}
-                <mesh rotation={[Math.PI / 3, Math.PI / 4, 0]}>
-                    <torusGeometry args={[0.4, 0.01, 16, 64]} />
-                    <meshStandardMaterial
-                        ref={ring2MatRef}
-                        color="#000000"
-                        emissive="#ff00ff"
-                        emissiveIntensity={3}
-                        transparent
-                        opacity={0.8}
-                    />
-                </mesh>
-
-                {/* 第三光環 - 另一角度 */}
-                <mesh rotation={[Math.PI / 6, -Math.PI / 3, Math.PI / 4]}>
-                    <torusGeometry args={[0.35, 0.008, 16, 64]} />
-                    <meshStandardMaterial
-                        ref={ring3MatRef}
-                        color="#000000"
-                        emissive="#00ffaa"
-                        emissiveIntensity={3.5}
-                        transparent
-                        opacity={0.7}
-                    />
-                </mesh>
-
-                {/* 發光線條 - 垂直軸（主線 + 光暈層）*/}
-                <group>
-                    {/* 核心線 */}
-                    <mesh>
-                        <cylinderGeometry args={[0.008, 0.008, 1.2, 8]} />
+                {/* 內部發光結構 - 線條+光暈風格 */}
+                <group ref={coreGroupRef} scale={[0.15, 0.15, 0.15]}>
+                    {/* 主光環 - 水平 */}
+                    <mesh ref={ringRef} rotation={[Math.PI / 2, 0, 0]}>
+                        <torusGeometry args={[0.5, 0.015, 16, 64]} />
                         <meshStandardMaterial
-                            ref={line1MatRef}
+                            ref={ring1MatRef}
                             color="#000000"
                             emissive="#00ffff"
-                            emissiveIntensity={5}
-                            transparent
-                            opacity={0.9}
-                        />
-                    </mesh>
-                    {/* 光暈層 */}
-                    <mesh>
-                        <cylinderGeometry args={[0.025, 0.025, 1.2, 8]} />
-                        <meshStandardMaterial
-                            color="#000000"
-                            emissive="#00ffff"
-                            emissiveIntensity={2}
-                            transparent
-                            opacity={0.3}
-                        />
-                    </mesh>
-                </group>
-
-                {/* 發光線條 - 水平軸（主線 + 光暈層）*/}
-                <group rotation={[0, 0, Math.PI / 2]}>
-                    {/* 核心線 */}
-                    <mesh>
-                        <cylinderGeometry args={[0.008, 0.008, 0.8, 8]} />
-                        <meshStandardMaterial
-                            ref={line2MatRef}
-                            color="#000000"
-                            emissive="#ff00ff"
                             emissiveIntensity={4}
                             transparent
                             opacity={0.9}
                         />
                     </mesh>
-                    {/* 光暈層 */}
-                    <mesh>
-                        <cylinderGeometry args={[0.025, 0.025, 0.8, 8]} />
+
+                    {/* 第二光環 - 傾斜 */}
+                    <mesh rotation={[Math.PI / 3, Math.PI / 4, 0]}>
+                        <torusGeometry args={[0.4, 0.01, 16, 64]} />
                         <meshStandardMaterial
+                            ref={ring2MatRef}
                             color="#000000"
                             emissive="#ff00ff"
-                            emissiveIntensity={1.5}
+                            emissiveIntensity={3}
                             transparent
-                            opacity={0.25}
+                            opacity={0.8}
                         />
                     </mesh>
+
+                    {/* 第三光環 - 另一角度 */}
+                    <mesh rotation={[Math.PI / 6, -Math.PI / 3, Math.PI / 4]}>
+                        <torusGeometry args={[0.35, 0.008, 16, 64]} />
+                        <meshStandardMaterial
+                            ref={ring3MatRef}
+                            color="#000000"
+                            emissive="#00ffaa"
+                            emissiveIntensity={3.5}
+                            transparent
+                            opacity={0.7}
+                        />
+                    </mesh>
+
+                    {/* 發光線條 - 垂直軸（主線 + 光暈層）*/}
+                    <group>
+                        {/* 核心線 */}
+                        <mesh>
+                            <cylinderGeometry args={[0.008, 0.008, 1.2, 8]} />
+                            <meshStandardMaterial
+                                ref={line1MatRef}
+                                color="#000000"
+                                emissive="#00ffff"
+                                emissiveIntensity={5}
+                                transparent
+                                opacity={0.9}
+                            />
+                        </mesh>
+                        {/* 光暈層 */}
+                        <mesh>
+                            <cylinderGeometry args={[0.025, 0.025, 1.2, 8]} />
+                            <meshStandardMaterial
+                                color="#000000"
+                                emissive="#00ffff"
+                                emissiveIntensity={2}
+                                transparent
+                                opacity={0.3}
+                            />
+                        </mesh>
+                    </group>
+
+                    {/* 發光線條 - 水平軸（主線 + 光暈層）*/}
+                    <group rotation={[0, 0, Math.PI / 2]}>
+                        {/* 核心線 */}
+                        <mesh>
+                            <cylinderGeometry args={[0.008, 0.008, 0.8, 8]} />
+                            <meshStandardMaterial
+                                ref={line2MatRef}
+                                color="#000000"
+                                emissive="#ff00ff"
+                                emissiveIntensity={4}
+                                transparent
+                                opacity={0.9}
+                            />
+                        </mesh>
+                        {/* 光暈層 */}
+                        <mesh>
+                            <cylinderGeometry args={[0.025, 0.025, 0.8, 8]} />
+                            <meshStandardMaterial
+                                color="#000000"
+                                emissive="#ff00ff"
+                                emissiveIntensity={1.5}
+                                transparent
+                                opacity={0.25}
+                            />
+                        </mesh>
+                    </group>
+
+                    {/* 柔和光暈 - 中心點光源 */}
+                    <pointLight ref={light1Ref} position={[0, 0, 0]} intensity={2} distance={1.5} color="#00ffff" />
+                    <pointLight ref={light2Ref} position={[0, 0.2, 0]} intensity={1.5} distance={1} color="#ff00ff" />
                 </group>
 
-                {/* 柔和光暈 - 中心點光源 */}
-                <pointLight ref={light1Ref} position={[0, 0, 0]} intensity={2} distance={1.5} color="#00ffff" />
-                <pointLight ref={light2Ref} position={[0, 0.2, 0]} intensity={1.5} distance={1} color="#ff00ff" />
+                {/* 精密機械錶風格齒輪組 - 不規則科技風佈局 */}
+                <group ref={gearGroupRef} scale={[0.15, 0.15, 0.15]} visible={false}>
+                    {/* ===== 左側群組（5顆，不規則分佈）===== */}
+                    {/* 大齒輪 - 左後方主視覺 - tech 風格 */}
+                    <WatchGear
+                        ref={gear1Ref}
+                        radius={0.32}
+                        teeth={40}
+                        spokes={6}
+                        gearStyle="tech"
+                        color="#909090"
+                        glowColor="#00aaff"
+                        glowIntensity={0.35}
+                        position={[-0.95, 0.08, -0.08]}
+                        rotation={[Math.PI / 2, 0, 0]}
+                    />
+                    {/* 中齒輪 - 左下前方 - hollow 風格 */}
+                    <WatchGear
+                        ref={gear2Ref}
+                        radius={0.2}
+                        teeth={26}
+                        spokes={4}
+                        gearStyle="hollow"
+                        color="#a0a0a0"
+                        glowColor="#00ccff"
+                        glowIntensity={0.4}
+                        position={[-0.55, -0.18, 0.12]}
+                        rotation={[Math.PI / 2, 0, 0]}
+                    />
+                    {/* 小齒輪 - 左上前方 - classic 風格 */}
+                    <WatchGear
+                        ref={gear3Ref}
+                        radius={0.14}
+                        teeth={18}
+                        spokes={3}
+                        gearStyle="classic"
+                        color="#b0b0b0"
+                        glowColor="#00ffff"
+                        glowIntensity={0.5}
+                        position={[-0.68, 0.28, 0.15]}
+                        rotation={[Math.PI / 2, 0, 0]}
+                    />
+                    {/* 微型齒輪 - 極左上 - slim 風格 */}
+                    <WatchGear
+                        ref={gear4Ref}
+                        radius={0.09}
+                        teeth={12}
+                        spokes={3}
+                        gearStyle="slim"
+                        color="#c0c0c0"
+                        glowColor="#00ddff"
+                        glowIntensity={0.55}
+                        position={[-1.18, 0.22, 0.05]}
+                        rotation={[Math.PI / 2, 0, 0]}
+                    />
+                    {/* 超小齒輪 - 左下後 - minimal 風格 */}
+                    <WatchGear
+                        ref={gear5Ref}
+                        radius={0.07}
+                        teeth={10}
+                        spokes={3}
+                        gearStyle="minimal"
+                        color="#d0d0d0"
+                        glowColor="#00eeff"
+                        glowIntensity={0.6}
+                        position={[-1.08, -0.12, -0.05]}
+                        rotation={[Math.PI / 2, 0, 0]}
+                    />
+
+                    {/* ===== 右側群組（4顆，不對稱）===== */}
+                    {/* 中大齒輪 - 右側主視覺 - hollow 風格 */}
+                    <WatchGear
+                        ref={rightGear1Ref}
+                        radius={0.26}
+                        teeth={32}
+                        spokes={5}
+                        gearStyle="hollow"
+                        color="#909090"
+                        glowColor="#00aaff"
+                        glowIntensity={0.35}
+                        position={[0.85, -0.05, 0.02]}
+                        rotation={[Math.PI / 2, 0, 0]}
+                    />
+                    {/* 小齒輪 - 右上前 - tech 風格 */}
+                    <WatchGear
+                        ref={rightGear2Ref}
+                        radius={0.15}
+                        teeth={20}
+                        spokes={4}
+                        gearStyle="tech"
+                        color="#a0a0a0"
+                        glowColor="#00ccff"
+                        glowIntensity={0.45}
+                        position={[0.58, 0.2, 0.14]}
+                        rotation={[Math.PI / 2, 0, 0]}
+                    />
+                    {/* 微型齒輪 - 極右後 - classic 風格 */}
+                    <WatchGear
+                        ref={rightGear3Ref}
+                        radius={0.11}
+                        teeth={14}
+                        spokes={3}
+                        gearStyle="classic"
+                        color="#b0b0b0"
+                        glowColor="#00ddff"
+                        glowIntensity={0.5}
+                        position={[1.12, 0.12, -0.06]}
+                        rotation={[Math.PI / 2, 0, 0]}
+                    />
+                    {/* 超微型齒輪 - 右下 - slim 風格 */}
+                    <WatchGear
+                        ref={rightGear4Ref}
+                        radius={0.08}
+                        teeth={11}
+                        spokes={3}
+                        gearStyle="slim"
+                        color="#c0c0c0"
+                        glowColor="#00eeff"
+                        glowIntensity={0.55}
+                        position={[-0.7, -0.22, 0.1]}
+                        rotation={[Math.PI / 2, 0, 0]}
+                    />
+                </group>
+
+                {/* VR 耳罩 - 左右兩側 */}
+                <VRHeadphones
+                    visible={headphonesVisible}
+                    parentRotation={headphonesRotation.current}
+                    opacity={headphonesOpacity}
+                />
+
+                {/* 掃描效果 */}
+                <VRScanEffect
+                    geometry={geometry}
+                    visible={scanVisible}
+                    parentRotation={headphonesRotation.current}
+                />
+
+                {/* 耳罩粒子效果 */}
+                <EarcupParticles
+                    visible={particlesVisible}
+                    opacity={particlesOpacity}
+                    parentRotation={headphonesRotation.current}
+                />
+
+                {/* 全息電路板 - 暫時移除 */}
+                {/* <HolographicCircuit
+                    visible={circuitVisible}
+                    opacity={circuitOpacity}
+                    growth={circuitGrowth}
+                    parentRotation={headphonesRotation.current}
+                /> */}
             </group>
-
-            {/* 精密機械錶風格齒輪組 - 不規則科技風佈局 */}
-            <group ref={gearGroupRef} scale={[0.15, 0.15, 0.15]} visible={false}>
-                {/* ===== 左側群組（5顆，不規則分佈）===== */}
-                {/* 大齒輪 - 左後方主視覺 - tech 風格 */}
-                <WatchGear
-                    ref={gear1Ref}
-                    radius={0.32}
-                    teeth={40}
-                    spokes={6}
-                    gearStyle="tech"
-                    color="#909090"
-                    glowColor="#00aaff"
-                    glowIntensity={0.35}
-                    position={[-0.95, 0.08, -0.08]}
-                    rotation={[Math.PI / 2, 0, 0]}
-                />
-                {/* 中齒輪 - 左下前方 - hollow 風格 */}
-                <WatchGear
-                    ref={gear2Ref}
-                    radius={0.2}
-                    teeth={26}
-                    spokes={4}
-                    gearStyle="hollow"
-                    color="#a0a0a0"
-                    glowColor="#00ccff"
-                    glowIntensity={0.4}
-                    position={[-0.55, -0.18, 0.12]}
-                    rotation={[Math.PI / 2, 0, 0]}
-                />
-                {/* 小齒輪 - 左上前方 - classic 風格 */}
-                <WatchGear
-                    ref={gear3Ref}
-                    radius={0.14}
-                    teeth={18}
-                    spokes={3}
-                    gearStyle="classic"
-                    color="#b0b0b0"
-                    glowColor="#00ffff"
-                    glowIntensity={0.5}
-                    position={[-0.68, 0.28, 0.15]}
-                    rotation={[Math.PI / 2, 0, 0]}
-                />
-                {/* 微型齒輪 - 極左上 - slim 風格 */}
-                <WatchGear
-                    ref={gear4Ref}
-                    radius={0.09}
-                    teeth={12}
-                    spokes={3}
-                    gearStyle="slim"
-                    color="#c0c0c0"
-                    glowColor="#00ddff"
-                    glowIntensity={0.55}
-                    position={[-1.18, 0.22, 0.05]}
-                    rotation={[Math.PI / 2, 0, 0]}
-                />
-                {/* 超小齒輪 - 左下後 - minimal 風格 */}
-                <WatchGear
-                    ref={gear5Ref}
-                    radius={0.07}
-                    teeth={10}
-                    spokes={3}
-                    gearStyle="minimal"
-                    color="#d0d0d0"
-                    glowColor="#00eeff"
-                    glowIntensity={0.6}
-                    position={[-1.08, -0.12, -0.05]}
-                    rotation={[Math.PI / 2, 0, 0]}
-                />
-
-                {/* ===== 右側群組（4顆，不對稱）===== */}
-                {/* 中大齒輪 - 右側主視覺 - hollow 風格 */}
-                <WatchGear
-                    ref={rightGear1Ref}
-                    radius={0.26}
-                    teeth={32}
-                    spokes={5}
-                    gearStyle="hollow"
-                    color="#909090"
-                    glowColor="#00aaff"
-                    glowIntensity={0.35}
-                    position={[0.85, -0.05, 0.02]}
-                    rotation={[Math.PI / 2, 0, 0]}
-                />
-                {/* 小齒輪 - 右上前 - tech 風格 */}
-                <WatchGear
-                    ref={rightGear2Ref}
-                    radius={0.15}
-                    teeth={20}
-                    spokes={4}
-                    gearStyle="tech"
-                    color="#a0a0a0"
-                    glowColor="#00ccff"
-                    glowIntensity={0.45}
-                    position={[0.58, 0.2, 0.14]}
-                    rotation={[Math.PI / 2, 0, 0]}
-                />
-                {/* 微型齒輪 - 極右後 - classic 風格 */}
-                <WatchGear
-                    ref={rightGear3Ref}
-                    radius={0.11}
-                    teeth={14}
-                    spokes={3}
-                    gearStyle="classic"
-                    color="#b0b0b0"
-                    glowColor="#00ddff"
-                    glowIntensity={0.5}
-                    position={[1.12, 0.12, -0.06]}
-                    rotation={[Math.PI / 2, 0, 0]}
-                />
-                {/* 超微型齒輪 - 右下 - slim 風格 */}
-                <WatchGear
-                    ref={rightGear4Ref}
-                    radius={0.08}
-                    teeth={11}
-                    spokes={3}
-                    gearStyle="slim"
-                    color="#c0c0c0"
-                    glowColor="#00eeff"
-                    glowIntensity={0.55}
-                    position={[0.7, -0.22, 0.1]}
-                    rotation={[Math.PI / 2, 0, 0]}
-                />
-            </group>
-
-            {/* VR 耳罩 - 左右兩側 */}
-            <VRHeadphones
-                visible={headphonesVisible}
-                parentRotation={headphonesRotation.current}
-                opacity={headphonesOpacity}
-            />
-
-            {/* 掃描效果 */}
-            <VRScanEffect
-                geometry={geometry}
-                visible={scanVisible}
-                parentRotation={headphonesRotation.current}
-            />
-
-            {/* 耳罩粒子效果 */}
-            <EarcupParticles
-                visible={particlesVisible}
-                opacity={particlesOpacity}
-                parentRotation={headphonesRotation.current}
-            />
-
-            {/* 全息電路板 - 暫時移除 */}
-            {/* <HolographicCircuit
-                visible={circuitVisible}
-                opacity={circuitOpacity}
-                growth={circuitGrowth}
-                parentRotation={headphonesRotation.current}
-            /> */}
         </>
     )
 }

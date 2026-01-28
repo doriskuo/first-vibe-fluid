@@ -126,9 +126,11 @@ function FullscreenFluid() {
     const currentStageName = getCurrentStageName(scrollValue / (totalPageHeightVh / 1000))
     // Note: ensure getCurrentStageName import is available
 
-    if (['cyberpunkEntry', 'descent', 'featureMorph', 'featureProjection'].includes(currentStageName)) {
-      darkness = 1.0; // Fully black for now, or fade in? 
-      // Let's fade in during cyberpunkEntry
+    // Updated to include new abstract simulation stages
+    if (['cyberpunkEntry', 'descent', 'theaterSpace', 'audioSim', 'visualSim', 'featureMorph', 'featureProjection'].includes(currentStageName)) {
+      darkness = 1.0; // Default to fully black 
+
+      // Fade in logic only for cyberpunkEntry transition
       if (currentStageName === 'cyberpunkEntry') {
         // Calculate local progress
         const stageInfo = getStageInfo('cyberpunkEntry')
@@ -181,6 +183,7 @@ function FullscreenFluid() {
         vertexShader={vertexShader}
         fragmentShader={fragmentShader}
         uniforms={uniforms}
+        depthWrite={false} // Prevent blocking background objects (like SphericalBackground)
       />
     </mesh>
   )

@@ -19,6 +19,10 @@ const GlassWaterDrop = dynamic(() => import('@/components/canvas/GlassWaterDrop'
   ssr: false,
 })
 
+const SphericalBackground = dynamic(() => import('@/components/canvas/SphericalBackground'), {
+  ssr: false,
+})
+
 export default function Home() {
   return (
     <>
@@ -32,6 +36,7 @@ export default function Home() {
       <div className="fixed inset-0 w-screen h-screen z-40 pointer-events-none">
         <Scene>
           <FluidBackground />
+          <SphericalBackground />
           <GlassWaterDrop />
         </Scene>
       </div>

@@ -20,8 +20,19 @@ export default function CyberpunkOverlay() {
         const currentStage = getCurrentStageName(rawProgress)
 
         // Show Black Background (Patterns) - IMMEDIATE
-        if (['cyberpunkEntry', 'descent', 'featureMorph', 'featureProjection'].includes(currentStage)) {
-            setBgOpacity(1)
+        if (['cyberpunkEntry', 'descent', 'theaterSpace', 'audioSim', 'visualSim', 'featureMorph', 'featureProjection'].includes(currentStage)) {
+            // Default 100% opacity
+            let targetOpacity = 1;
+
+            // FADEOUT LOGIC: At 6.2 (Theater Space start + delay), fade out the grid/particles
+            // Matches SphericalBackground entry at 6.2
+            if (rawProgress > 6.2) {
+                // Fade out over 0.8 units (same as sphere fade in)
+                const fadeProgress = Math.min((rawProgress - 6.2) / 0.8, 1);
+                targetOpacity = 1 - fadeProgress;
+            }
+
+            setBgOpacity(targetOpacity);
         } else {
             setBgOpacity(0)
         }

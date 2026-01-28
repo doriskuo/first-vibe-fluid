@@ -84,12 +84,16 @@ export const stages: ScrollStage[] = [
         durationVh: 1500, // Particles move UP, VR moves DOWN
     },
     {
-        name: 'featureMorph',
-        durationVh: 2000, // Scroll to Morph: Construct -> Explode -> Scan
+        name: 'theaterSpace',
+        durationVh: 1000, // Spherical Wireframe Grid, Space environment
     },
     {
-        name: 'featureProjection',
-        durationVh: 1000, // Holographic projection
+        name: 'audioSim',
+        durationVh: 1000, // Audio Visualization
+    },
+    {
+        name: 'visualSim',
+        durationVh: 1000, // Visual Visualization
     },
 ]
 

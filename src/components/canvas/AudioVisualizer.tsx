@@ -22,7 +22,8 @@ export default function AudioVisualizer() {
     const midBarsCount = 128 // High density
 
     // Colors
-    const trebleColors = useMemo(() => generateColors(barsPerRow, '#00f3ff', '#ffffff'), [])
+    // Treble: Pastel Pink/Lavender -> White (Harmonize with Magenta, distinct from Blue)
+    const trebleColors = useMemo(() => generateColors(barsPerRow, '#ff88cc', '#ffffff'), [])
 
     // Mid: Multi-stop gradient (Magenta -> Purple -> Blue -> Cyan)
     const midColors = useMemo(() => {
@@ -80,13 +81,23 @@ export default function AudioVisualizer() {
         const globalScale = 0.6
         const rowWidth = 12
 
-        // --- Row 0: TREBLE (Particles/Dots - Spheres) ---
+        // --- Row 0: TREBLE (Particles/Dots - "Soft Glimmer") ---
+        // User Request: "Softer colors", "No flashing", "Distinct from bg"
         if (trebleRef.current) {
             for (let i = 0; i < barsPerRow; i++) {
                 const x = (i / barsPerRow - 0.5) * rowWidth
-                let n = noise3D(x * 5.0, time * 10.0, 0); n = (n + 1) / 2
+
+                // Smoother, slower noise for gentle floating
+                // Slower time factor (2.0 vs 10.0)
+                let n = noise3D(x * 3.0, time * 2.0, 0)
+                n = (n + 1) / 2
+
                 const y = 0.9
-                const scale = (0.1 + Math.pow(n, 2) * 1.5) * globalScale
+
+                // Gentle scale variance (0.3 to 1.0) - No sharp "flashing" (pow)
+                // Linear mapping is much softer
+                const scale = (0.3 + n * 0.7) * globalScale
+
                 dummy.position.set(x, y, -8)
                 dummy.scale.set(scale, scale, scale)
                 dummy.rotation.set(0, 0, 0)

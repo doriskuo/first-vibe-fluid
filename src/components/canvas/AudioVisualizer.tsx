@@ -19,14 +19,21 @@ export default function AudioVisualizer() {
     const { springProgress } = useScrollAnimation()
 
     const barsPerRow = 64
-    const midBarsCount = 96 // Denser mid layer
+    const midBarsCount = 128 // High density
 
     // Colors
-    // Treble: Cyan -> White
     const trebleColors = useMemo(() => generateColors(barsPerRow, '#00f3ff', '#ffffff'), [])
-    // Mid: Cyan -> Orange
-    const midColors = useMemo(() => generateColors(midBarsCount, '#00f3ff', '#ff8800'), [])
-    // Bass: Blue -> Magenta
+
+    // Mid: Multi-stop gradient (Magenta -> Purple -> Blue -> Cyan)
+    const midColors = useMemo(() => {
+        return generateMultiStopColors(midBarsCount, [
+            new THREE.Color('#ff00cc'), // Magenta
+            new THREE.Color('#aa00ff'), // Purple
+            new THREE.Color('#0066ff'), // Deep Blue
+            new THREE.Color('#00ffff'), // Bright Cyan
+        ])
+    }, [])
+
     const bassColors = useMemo(() => generateColors(barsPerRow, '#4d00ff', '#ff00ff'), [])
 
     useFrame((state) => {
@@ -46,23 +53,30 @@ export default function AudioVisualizer() {
             }
         }
 
-        // Global visibility check
         const isVisible = opacity > 0.01
-        if (trebleRef.current) trebleRef.current.visible = isVisible
-        if (midRef.current) midRef.current.visible = isVisible
-        if (bassRef.current) bassRef.current.visible = isVisible
+        if (!isVisible) {
+            if (trebleRef.current) trebleRef.current.visible = false
+            if (midRef.current) midRef.current.visible = false
+            if (bassRef.current) bassRef.current.visible = false
+            return
+        }
 
-        if (!isVisible) return
-
-        // Update Opacity
-        if (trebleRef.current) (trebleRef.current.material as THREE.MeshBasicMaterial).opacity = opacity
-        if (midRef.current) (midRef.current.material as THREE.MeshBasicMaterial).opacity = opacity
-        if (bassRef.current) (bassRef.current.material as THREE.MeshBasicMaterial).opacity = opacity
+        if (trebleRef.current) {
+            trebleRef.current.visible = true
+                ; (trebleRef.current.material as THREE.MeshBasicMaterial).opacity = opacity
+        }
+        if (midRef.current) {
+            midRef.current.visible = true
+                ; (midRef.current.material as THREE.MeshBasicMaterial).opacity = opacity
+        }
+        if (bassRef.current) {
+            bassRef.current.visible = true
+                ; (bassRef.current.material as THREE.MeshBasicMaterial).opacity = opacity
+        }
 
         // Animation Loop
         const time = state.clock.elapsedTime
 
-        // Global scale factor to make everything "smaller"
         const globalScale = 0.6
         const rowWidth = 12
 
@@ -70,17 +84,9 @@ export default function AudioVisualizer() {
         if (trebleRef.current) {
             for (let i = 0; i < barsPerRow; i++) {
                 const x = (i / barsPerRow - 0.5) * rowWidth
-
-                // Fast, high-frequency noise for vibration
-                let n = noise3D(x * 5.0, time * 10.0, 0) // Faster noise
-                n = (n + 1) / 2
-
-                // Y: 0.9 (Tightened, was 1.6)
+                let n = noise3D(x * 5.0, time * 10.0, 0); n = (n + 1) / 2
                 const y = 0.9
-
-                // Large scale variance: 0.1 to 1.3
                 const scale = (0.1 + Math.pow(n, 2) * 1.5) * globalScale
-
                 dummy.position.set(x, y, -8)
                 dummy.scale.set(scale, scale, scale)
                 dummy.rotation.set(0, 0, 0)
@@ -90,23 +96,48 @@ export default function AudioVisualizer() {
             trebleRef.current.instanceMatrix.needsUpdate = true
         }
 
-        // --- Row 1: MID (Standard Bars) ---
+        // --- Row 1: MID (Simplex Noise / Organic Wave) ---
+        // --- Row 1: MID (Dual Independent Simplex Noise Curves) ---
+        // User Request: "Top and Bottom waves are curved but asynchronous"
+        // "Connecting arc lengths different"
         if (midRef.current) {
             for (let i = 0; i < midBarsCount; i++) {
                 const x = (i / midBarsCount - 0.5) * rowWidth
+                const normX = i / midBarsCount
 
-                // Smooth melodic wave
-                let n = noise3D(x * 0.5, time * 1.5, 100)
-                n = (n + 1) / 2
-                const beat = Math.pow(Math.sin(time * 3) * 0.5 + 0.5, 2)
+                // 1. Top Wave (Independent Noise)
+                // Seed 0 (z=0)
+                let nTop = noise3D(x * 0.3, time * 0.6, 0)
+                // Increased Amplitude: (n * 0.8 + 0.5) * 1.3 -> More peaks/valleys
+                let topY = (nTop * 0.8 + 0.5) * 1.3
 
-                const height = (0.2 + n * 2.0 * (1 + beat * 0.2)) * globalScale
-                const envelope = Math.sin((i / midBarsCount) * Math.PI)
+                // 2. Bottom Wave (Independent Noise - Different Seed)
+                // Seed 100 (z=100) -> Completely different pattern
+                // Slightly different frequency/speed too
+                let nBot = noise3D(x * 0.4 + 100, time * 0.7 + 50, 100)
+                // Increased Amplitude
+                let bottomY = -(nBot * 0.8 + 0.5) * 1.3
 
-                // Y: -0.3 (Tightened, was -0.2)
-                dummy.position.set(x, -0.3, -8)
-                // Thinner bars to accommodate density
-                dummy.scale.set(0.35, height * envelope, 0.35)
+                // 3. Envelope (Taper at ends)
+                // Use smooth sine window
+                const envelope = Math.sin(normX * Math.PI)
+
+                // Apply envelope to dampen ends to 0 center
+                topY *= envelope
+                bottomY *= envelope
+
+                // 4. Calculate Bar Transform
+                // Height is total span
+                let height = (topY - bottomY) * globalScale
+                // Center is midpoint of span
+                let centerY = (topY + bottomY) / 2 * globalScale
+
+                // Base offset Y = -0.3
+                const baseOffsetY = -0.3
+
+                dummy.position.set(x, baseOffsetY + centerY, -8)
+                // Thinner bars (0.2)
+                dummy.scale.set(0.2, Math.max(0.01, height), 0.2)
                 dummy.rotation.set(0, 0, 0)
                 dummy.updateMatrix()
                 midRef.current.setMatrixAt(i, dummy.matrix)
@@ -118,18 +149,10 @@ export default function AudioVisualizer() {
         if (bassRef.current) {
             for (let i = 0; i < barsPerRow; i++) {
                 const x = (i / barsPerRow - 0.5) * rowWidth
-
-                // Revert to Coherent Noise (using x)
-                let n = noise3D(x * 0.2, time * 0.5, 200)
-                n = (n + 1) / 2
-
+                let n = noise3D(x * 0.2, time * 0.5, 200); n = (n + 1) / 2
                 const breathing = (Math.sin(time * 3) * 0.5 + 0.5) * 0.2
-
                 const h = (0.5 + n * 0.8 + breathing) * globalScale
-
-                // Y: -1.5 (Tightened, was -2.2)
-                dummy.position.set(x, -1.5, -8)
-                // Round Cylinder Scale
+                dummy.position.set(x, -2.0, -8)
                 dummy.scale.set(1.0, h, 1.0)
                 dummy.rotation.set(0, 0, 0)
                 dummy.updateMatrix()
@@ -141,21 +164,21 @@ export default function AudioVisualizer() {
 
     return (
         <group>
-            {/* Treble: Spheres (Still Spheres) */}
+            {/* Treble */}
             <instancedMesh ref={trebleRef} args={[undefined, undefined, barsPerRow]}>
                 <sphereGeometry args={[0.08, 8, 8]} />
                 <instancedBufferAttribute attach="instanceColor" args={[trebleColors, 3]} />
                 <meshBasicMaterial transparent opacity={0} toneMapped={false} />
             </instancedMesh>
 
-            {/* Mid: Boxes */}
+            {/* Mid */}
             <instancedMesh ref={midRef} args={[undefined, undefined, midBarsCount]}>
                 <boxGeometry args={[0.2, 1, 0.2]} />
                 <instancedBufferAttribute attach="instanceColor" args={[midColors, 3]} />
                 <meshBasicMaterial transparent opacity={0} toneMapped={false} />
             </instancedMesh>
 
-            {/* Bass: Cylinders (or Wide Boxes) */}
+            {/* Bass */}
             <instancedMesh ref={bassRef} args={[undefined, undefined, barsPerRow]}>
                 <cylinderGeometry args={[0.3, 0.3, 1, 16]} />
                 <instancedBufferAttribute attach="instanceColor" args={[bassColors, 3]} />
@@ -173,6 +196,29 @@ function generateColors(count: number, hex1: string, hex2: string) {
     for (let i = 0; i < count; i++) {
         const t = i / count
         const color = new THREE.Color().lerpColors(c1, c2, t)
+        data[i * 3] = color.r
+        data[i * 3 + 1] = color.g
+        data[i * 3 + 2] = color.b
+    }
+    return data
+}
+
+function generateMultiStopColors(count: number, colors: THREE.Color[]) {
+    const data = new Float32Array(count * 3)
+    const segments = colors.length - 1
+
+    for (let i = 0; i < count; i++) {
+        const t = i / (count - 1)
+        const segmentIndex = Math.floor(t * segments)
+        const segmentT = (t * segments) - segmentIndex
+
+        const index1 = Math.min(segmentIndex, segments - 1)
+        const index2 = Math.min(segmentIndex + 1, segments)
+
+        const c1 = colors[index1]
+        const c2 = colors[index2]
+
+        const color = new THREE.Color().lerpColors(c1, c2, segmentT)
         data[i * 3] = color.r
         data[i * 3 + 1] = color.g
         data[i * 3 + 2] = color.b

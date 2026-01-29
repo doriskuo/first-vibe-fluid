@@ -22,7 +22,7 @@ export default function AudioVisualizer() {
     const midBarsCount = 128 // High density
 
     // Colors
-    // Treble: Pastel Pink/Lavender -> White
+    // Treble: Pastel Pink/Lavender -> White (Harmonize with Magenta, distinct from Blue)
     const trebleColors = useMemo(() => generateColors(barsPerRow, '#ff88cc', '#ffffff'), [])
 
     // Mid: Multi-stop gradient (Magenta -> Purple -> Blue -> Cyan)
@@ -40,31 +40,8 @@ export default function AudioVisualizer() {
     useFrame((state) => {
         // Scroll Visibility Logic
         const scrollValue = springProgress.get()
-        // Extend visibility to allow "Dots lingering" phase
-        const startVh = 6.9
-        const endVh = 8.2
-
-        // 1. Pixelate Phase (7.8 -> 8.0)
-        // Bars snap to dots randomly
-        let pixelateProgress = 0
-        const pixStart = 7.8
-        const pixEnd = 8.0
-
-        if (scrollValue > pixStart) {
-            pixelateProgress = (scrollValue - pixStart) / (pixEnd - pixStart)
-            pixelateProgress = Math.min(Math.max(pixelateProgress, 0), 1)
-        }
-
-        // 2. Condense/Fade Phase (8.0 -> 8.2)
-        // Dots fade out as VisualParticles takes over
-        let fadeProgress = 0
-        const fadeStart = 8.0
-        const fadeEnd = 8.2
-
-        if (scrollValue > fadeStart) {
-            fadeProgress = (scrollValue - fadeStart) / (fadeEnd - fadeStart)
-            fadeProgress = Math.min(Math.max(fadeProgress, 0), 1)
-        }
+        const startVh = 8.5
+        const endVh = 9.5
 
         let opacity = 0
         if (scrollValue >= startVh - 0.5 && scrollValue <= endVh + 0.5) {
@@ -100,37 +77,28 @@ export default function AudioVisualizer() {
 
         // Animation Loop
         const time = state.clock.elapsedTime
+
         const globalScale = 0.6
         const rowWidth = 12
 
-        // --- Row 0: TREBLE ---
+        // --- Row 0: TREBLE (Particles/Dots - "Soft Glimmer") ---
+        // User Request: "Softer colors", "No flashing", "Distinct from bg"
         if (trebleRef.current) {
             for (let i = 0; i < barsPerRow; i++) {
                 const x = (i / barsPerRow - 0.5) * rowWidth
 
+                // Smoother, slower noise for gentle floating
+                // Slower time factor (2.0 vs 10.0)
                 let n = noise3D(x * 3.0, time * 2.0, 0)
                 n = (n + 1) / 2
 
-                // Deterministic Threshold
-                const threshold = (Math.sin(i * 12.9898) * 43758.5453 % 1 + 1) / 2
+                const y = 0.9
 
-                // Logic:
-                // 1. Solid -> 2. Dot (Pixelate) -> 3. Gone (Fade)
+                // Gentle scale variance (0.3 to 1.0) - No sharp "flashing" (pow)
+                // Linear mapping is much softer
+                const scale = (0.3 + n * 0.7) * globalScale
 
-                let scale = (0.3 + n * 0.7) * globalScale
-
-                const isPixelated = pixelateProgress > (threshold * 0.9) // Factor slightly to delay starts
-                const isGone = fadeProgress > threshold
-
-                if (isPixelated) {
-                    scale = 0.04 // Hard Snap to Dot
-                }
-                if (isGone) {
-                    scale = 0 // Gone
-                }
-
-                // Static Position
-                dummy.position.set(x, 0.9, -8)
+                dummy.position.set(x, y, -8)
                 dummy.scale.set(scale, scale, scale)
                 dummy.rotation.set(0, 0, 0)
                 dummy.updateMatrix()
@@ -139,43 +107,48 @@ export default function AudioVisualizer() {
             trebleRef.current.instanceMatrix.needsUpdate = true
         }
 
-        // --- Row 1: MID ---
+        // --- Row 1: MID (Simplex Noise / Organic Wave) ---
+        // --- Row 1: MID (Dual Independent Simplex Noise Curves) ---
+        // User Request: "Top and Bottom waves are curved but asynchronous"
+        // "Connecting arc lengths different"
         if (midRef.current) {
             for (let i = 0; i < midBarsCount; i++) {
                 const x = (i / midBarsCount - 0.5) * rowWidth
                 const normX = i / midBarsCount
 
+                // 1. Top Wave (Independent Noise)
+                // Seed 0 (z=0)
                 let nTop = noise3D(x * 0.3, time * 0.6, 0)
+                // Increased Amplitude: (n * 0.8 + 0.5) * 1.3 -> More peaks/valleys
                 let topY = (nTop * 0.8 + 0.5) * 1.3
 
+                // 2. Bottom Wave (Independent Noise - Different Seed)
+                // Seed 100 (z=100) -> Completely different pattern
+                // Slightly different frequency/speed too
                 let nBot = noise3D(x * 0.4 + 100, time * 0.7 + 50, 100)
+                // Increased Amplitude
                 let bottomY = -(nBot * 0.8 + 0.5) * 1.3
 
+                // 3. Envelope (Taper at ends)
+                // Use smooth sine window
                 const envelope = Math.sin(normX * Math.PI)
+
+                // Apply envelope to dampen ends to 0 center
                 topY *= envelope
                 bottomY *= envelope
 
+                // 4. Calculate Bar Transform
+                // Height is total span
                 let height = (topY - bottomY) * globalScale
+                // Center is midpoint of span
                 let centerY = (topY + bottomY) / 2 * globalScale
+
+                // Base offset Y = -0.3
                 const baseOffsetY = -0.3
 
-                const threshold = (Math.sin(i * 78.233) * 43758.5453 % 1 + 1) / 2
-
-                let sx = 0.2, sy = Math.max(0.01, height), sz = 0.2
-
-                const isPixelated = pixelateProgress > (threshold * 0.9)
-                const isGone = fadeProgress > threshold
-
-                if (isPixelated) {
-                    // Hard Snap
-                    sx = 0.04; sy = 0.04; sz = 0.04
-                }
-                if (isGone) {
-                    sx = 0; sy = 0; sz = 0
-                }
-
                 dummy.position.set(x, baseOffsetY + centerY, -8)
-                dummy.scale.set(sx, sy, sz)
+                // Thinner bars (0.2)
+                dummy.scale.set(0.2, Math.max(0.01, height), 0.2)
                 dummy.rotation.set(0, 0, 0)
                 dummy.updateMatrix()
                 midRef.current.setMatrixAt(i, dummy.matrix)
@@ -183,30 +156,15 @@ export default function AudioVisualizer() {
             midRef.current.instanceMatrix.needsUpdate = true
         }
 
-        // --- Row 2: BASS (Was Cylinders, now Spheres to fix "Square Grid") ---
+        // --- Row 2: BASS (Round Cylinders / Platforms) ---
         if (bassRef.current) {
             for (let i = 0; i < barsPerRow; i++) {
                 const x = (i / barsPerRow - 0.5) * rowWidth
                 let n = noise3D(x * 0.2, time * 0.5, 200); n = (n + 1) / 2
                 const breathing = (Math.sin(time * 3) * 0.5 + 0.5) * 0.2
                 const h = (0.5 + n * 0.8 + breathing) * globalScale
-
-                const threshold = (Math.sin(i * 99.123) * 43758.5453 % 1 + 1) / 2
-
-                let sx = 1.0, sy = h, sz = 1.0
-
-                const isPixelated = pixelateProgress > (threshold * 0.9)
-                const isGone = fadeProgress > threshold
-
-                if (isPixelated) {
-                    sx = 0.08; sy = 0.08; sz = 0.08 // Bass dots slightly larger
-                }
-                if (isGone) {
-                    sx = 0; sy = 0; sz = 0
-                }
-
                 dummy.position.set(x, -2.0, -8)
-                dummy.scale.set(sx, sy, sz)
+                dummy.scale.set(1.0, h, 1.0)
                 dummy.rotation.set(0, 0, 0)
                 dummy.updateMatrix()
                 bassRef.current.setMatrixAt(i, dummy.matrix)
@@ -231,11 +189,11 @@ export default function AudioVisualizer() {
                 <meshBasicMaterial transparent opacity={0} toneMapped={false} />
             </instancedMesh>
 
-            {/* Bass - Changed to Sphere to avoid Square appearance */}
+            {/* Bass */}
             <instancedMesh ref={bassRef} args={[undefined, undefined, barsPerRow]}>
-                <sphereGeometry args={[0.3, 8, 8]} />
+                <cylinderGeometry args={[0.3, 0.3, 1, 16]} />
                 <instancedBufferAttribute attach="instanceColor" args={[bassColors, 3]} />
-                <meshBasicMaterial transparent opacity={0} toneMapped={false} />
+                <meshBasicMaterial transparent opacity={0} toneMapped={false} wireframe />
             </instancedMesh>
         </group>
     )

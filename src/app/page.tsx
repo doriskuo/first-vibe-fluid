@@ -19,11 +19,11 @@ const GlassWaterDrop = dynamic(() => import('@/components/canvas/GlassWaterDrop'
   ssr: false,
 })
 
-const SphericalBackground = dynamic(() => import('@/components/canvas/SphericalBackground'), {
+const AudioVisualizer = dynamic(() => import('@/components/canvas/AudioVisualizer'), {
   ssr: false,
 })
 
-const AudioVisualizer = dynamic(() => import('@/components/canvas/AudioVisualizer'), {
+const VisualParticles = dynamic(() => import('@/components/canvas/VisualParticles'), {
   ssr: false,
 })
 
@@ -40,8 +40,8 @@ export default function Home() {
       <div className="fixed inset-0 w-screen h-screen z-40 pointer-events-none">
         <Scene>
           <FluidBackground />
-          <SphericalBackground />
           <AudioVisualizer />
+          <VisualParticles />
           <GlassWaterDrop />
         </Scene>
       </div>

@@ -4,21 +4,22 @@ import { useRef, useMemo } from 'react'
 import { useFrame } from '@react-three/fiber'
 import * as THREE from 'three'
 import { useScrollAnimation } from '@/hooks/useScrollAnimation'
+import { SimplexNoise } from 'three/examples/jsm/math/SimplexNoise.js'
 
 export default function VisualParticles() {
     const meshRef = useRef<THREE.InstancedMesh>(null)
     const dummy = useMemo(() => new THREE.Object3D(), [])
 
     // Config
-    const particleCount = 15000 // HIGH DENSITY for solid rings
+    const particleCount = 15000
     const startVh = 8.0
-    const endVh = 18.9
+    const endVh = 22.0
 
     const crystallizeStart = 8.0
     const crystallizeEnd = 8.5
 
     const portalStart = 8.9
-    const portalEnd = 18.9
+    const portalEnd = 22.0
 
     const { springProgress } = useScrollAnimation()
 
@@ -26,7 +27,6 @@ export default function VisualParticles() {
     const randomPositions = useMemo(() => {
         const arr = new Float32Array(particleCount * 3)
         for (let i = 0; i < particleCount; i++) {
-            // Tighter spawn area for initial cloud to prevent huge spread
             arr[i * 3] = (Math.random() - 0.5) * 40
             arr[i * 3 + 1] = (Math.random() - 0.5) * 40
             arr[i * 3 + 2] = (Math.random() - 0.5) * 80
@@ -37,9 +37,8 @@ export default function VisualParticles() {
     const targetPositions = useMemo(() => {
         const arr = new Float32Array(particleCount * 3)
         for (let i = 0; i < particleCount; i++) {
-            // Core Sphere (Initial State)
+            // Core Sphere
             if (i < particleCount * 0.3) {
-                // Tighter core
                 const phi = Math.acos(-1 + (2 * i) / (particleCount * 0.3))
                 const theta = Math.sqrt((particleCount * 0.3) * Math.PI) * phi
                 const r = 2.0
@@ -47,13 +46,12 @@ export default function VisualParticles() {
                 arr[i * 3 + 1] = r * Math.sin(theta) * Math.sin(phi)
                 arr[i * 3 + 2] = -8 + r * Math.cos(phi)
             }
-            // Fog / Tunnel Walls (Initial State)
+            // Fog
             else {
                 const angle = Math.random() * Math.PI * 2
                 const r = 3.5 + Math.pow(Math.random(), 2) * 8.0
                 const x = r * Math.cos(angle)
                 const z = -8 + (Math.random() - 0.5) * 10
-
                 const ySpread = 0.5 + (r - 3.5) * 0.5
                 const y = (Math.random() - 0.5) * ySpread
 
@@ -66,70 +64,53 @@ export default function VisualParticles() {
     }, [])
 
 
-
-
-    // Define the "Snake" Path
+    // Define the "Snake" Path - GENTLE VERSION (Pre-Rollercoaster)
     const tunnelCurve = useMemo(() => {
-        // Exaggerated S-Curve for "Snake" feel
         const points = [
             new THREE.Vector3(0, 0, 0),
             new THREE.Vector3(0, 0, -20),
-            new THREE.Vector3(30, 20, -80),     // Sharp Right Up
-            new THREE.Vector3(-20, -30, -160),  // Sharp Left Down
-            new THREE.Vector3(-40, 10, -240),   // Sharp Left Up
-            new THREE.Vector3(30, -20, -320),   // Sharp Right Down
+            new THREE.Vector3(20, -10, -100),   // Gentle Right
+            new THREE.Vector3(-20, 10, -200),   // Gentle Left
+            new THREE.Vector3(10, 5, -350),     // Slight Adjust
             new THREE.Vector3(0, 0, -500),      // Return Center
         ]
         return new THREE.CatmullRomCurve3(points, false, 'catmullrom', 0.5)
     }, [])
 
     const tunnelData = useMemo(() => {
-        // Pre-calculate Ring Assignments
-        // We want distinct bands of light (Rings)
         const arr = new Float32Array(particleCount * 3)
-
-        const totalRings = 120 // 120 rings * ~125 particles = 15000 (High Density)
+        const totalRings = 120
         const particlesPerRing = Math.floor(particleCount / totalRings)
 
         for (let i = 0; i < particleCount; i++) {
-            // Assign to a specific ring
             const ringIndex = Math.floor(i / particlesPerRing)
-            const normalizedRingPos = ringIndex / totalRings // 0.0 to 1.0 along the path
-
-            // Assign angle within the ring (0 to 2PI)
+            const normalizedRingPos = ringIndex / totalRings
             const pIndexInRing = i % particlesPerRing
             const angle = (pIndexInRing / particlesPerRing) * Math.PI * 2
-
-            // RESTORE THICKNESS: Moderate jitter for "thick neon" look (not laser thin)
             const radiusJitter = 0.85 + Math.random() * 0.3
             const angleJitter = (Math.random() - 0.5) * 0.1
 
-            arr[i * 3] = normalizedRingPos // x: Position along curve (0-1)
-            arr[i * 3 + 1] = angle + angleJitter // y: Angle
-            arr[i * 3 + 2] = radiusJitter   // z: Radius scale
+            arr[i * 3] = normalizedRingPos
+            arr[i * 3 + 1] = angle + angleJitter
+            arr[i * 3 + 2] = radiusJitter
         }
         return arr
     }, [])
 
     const colors = useMemo(() => {
         const arr = new Float32Array(particleCount * 3)
-        // Darker, more mysterious palate for the black hole
         const cBase = new THREE.Color('#88aaff')
         const cHighlight = new THREE.Color('#ffffff')
-        const cVoid = new THREE.Color('#4400cc') // Deep purple/blue
+        const cVoid = new THREE.Color('#4400cc')
 
         for (let i = 0; i < particleCount; i++) {
             let c = cBase
             const r = Math.random()
-
             if (r > 0.9) c = cHighlight
             else if (r > 0.5) c = cVoid
-
-            // Core is brighter
             if (i < particleCount * 0.3) {
                 c = new THREE.Color('#ffffff').lerp(cVoid, Math.random() * 0.5)
             }
-
             arr[i * 3] = c.r
             arr[i * 3 + 1] = c.g
             arr[i * 3 + 2] = c.b
@@ -141,11 +122,9 @@ export default function VisualParticles() {
         const scrollValue = springProgress.get()
         const time = state.clock.elapsedTime
 
-        // Global Visibility Logic
         let globalOpacity = 0
         if (scrollValue >= startVh) {
             globalOpacity = 1
-            // Fade in
             if (scrollValue < startVh + 0.5) {
                 globalOpacity = (scrollValue - startVh) / 0.5
             }
@@ -157,46 +136,28 @@ export default function VisualParticles() {
         }
         if (meshRef.current) {
             meshRef.current.visible = true
-                // Fade out REMOVED for Galaxy Exit
-                /* if (scrollValue > 18.0) {
-                    globalOpacity *= Math.max(0, 1 - (scrollValue - 18.0))
-                } */
                 ; (meshRef.current.material as THREE.MeshBasicMaterial).opacity = globalOpacity
         }
 
-        // --- STAGE 1: Crystallize / Sphere Formation (8.0 - 8.9) ---
-        let crystalProgress = 0
-        if (scrollValue > crystallizeStart) {
-            crystalProgress = (scrollValue - crystallizeStart) / (crystallizeEnd - crystallizeStart)
-            crystalProgress = Math.min(Math.max(crystalProgress, 0), 1)
-        }
-        const easeCrystal = 1 - Math.pow(1 - crystalProgress, 3)
+        const easeCrystal = 1 - Math.pow(1 - Math.min(Math.max((scrollValue - crystallizeStart) / (crystallizeEnd - crystallizeStart), 0), 1), 3)
 
-        // --- STAGE 2: Portal Vortex -> Curved Tunnel (8.9 - 18.9) ---
         let portalProgress = 0
         if (scrollValue > portalStart) {
-            portalProgress = (scrollValue - portalStart) / (portalEnd - portalStart)
-            portalProgress = Math.min(Math.max(portalProgress, 0), 1)
+            portalProgress = Math.min(Math.max((scrollValue - portalStart) / (portalEnd - portalStart), 0), 1)
         }
 
-        // Sub-phases
-        // 0.0 - 0.05: Morph from Sphere to Tunnel Start
-        // 0.05 - 1.0: Fly through Tunnel
-        // Transition Phase: 0 -> 0.3 (Gather to Z=-8 Sphere) -> 1.0 (Stretch to Tunnel)
         const gatherPhase = Math.min(portalProgress * 3.33, 1.0)
         const tunnelPhase = Math.max(0, (portalProgress - 0.3) / 0.7)
 
-        // Speed Calculation: Base + Scroll Surge
-        // We want a constant flow + boost when scrolling
-        const baseSpeed = 0.05 // Constant idle flow
-        const surge = Math.pow(portalProgress, 2) * 2.0 // Acceleration
-        const flowSpeed = time * 0.05 + surge
+        // SPEED & SURGE - Boosted for speed
+        const surge = Math.pow(portalProgress, 1.5) * 15.0 // Increased from 3.0 to 15.0 for very high speed
+        const flowSpeed = time * 0.2 + surge
 
         if (meshRef.current) {
-            const upVec = new THREE.Vector3(0, 1, 0) // Stable skyline
+            const upVec = new THREE.Vector3(0, 1, 0)
 
             for (let i = 0; i < particleCount; i++) {
-                // --- 1. Base State: Sphere/Cloud ---
+                // 1. BASE STATE
                 const rx = randomPositions[i * 3]
                 const ry = randomPositions[i * 3 + 1]
                 const rz = randomPositions[i * 3 + 2]
@@ -205,7 +166,6 @@ export default function VisualParticles() {
                 const ty = targetPositions[i * 3 + 1]
                 const tz = targetPositions[i * 3 + 2]
 
-                // Idle Drift
                 const driftX = Math.sin(time * 0.5 + i) * 0.1
                 const driftY = Math.cos(time * 0.3 + i) * 0.1
                 const driftZ = Math.sin(time * 0.4 + i) * 0.1
@@ -214,47 +174,26 @@ export default function VisualParticles() {
                 let curY = ry + (ty + driftY - ry) * easeCrystal
                 let curZ = rz + (tz + driftZ - rz) * easeCrystal
 
-                // --- 2. Tunnel Transformation ---
+                // 2. TUNNEL TRANSFORMATION
                 if (portalProgress > 0) {
-                    // Pre-calculated stats from tunnelData
-                    const ringStartU = tunnelData[i * 3]    // 0.0 - 1.0 (Fixed Ring Pos)
-                    const ringAngle = tunnelData[i * 3 + 1] // Angle
+                    const ringStartU = tunnelData[i * 3]
+                    const ringAngle = tunnelData[i * 3 + 1]
                     const radiusScale = tunnelData[i * 3 + 2]
 
-                    // Motion: Ring moves along the curve
-                    // We want rings to come FROM deep (-Z) TOWARDS camera (0)
-                    // Curve is defined 0 -> -500
-                    // So we want u to go from 1.0 -> 0.0
-
-                    // (ringStartU + flow) % 1.0 = increasing 0->1
-                    // So we invert it:
                     let loopProgress = (ringStartU + flowSpeed * 0.2) % 1.0
                     let u = 1.0 - loopProgress
 
-                    // GET CURVE DATA
                     const point = tunnelCurve.getPointAt(u)
                     const tangent = tunnelCurve.getTangentAt(u).normalize()
-
-                    // Frenet Frame (No Twist / Locked Up)
                     let right = new THREE.Vector3().crossVectors(tangent, upVec).normalize()
-                    if (right.lengthSq() < 0.001) {
-                        // Handle vertical edge case
-                        right.set(1, 0, 0)
-                    }
+                    if (right.lengthSq() < 0.001) right.set(1, 0, 0)
                     const correctedUp = new THREE.Vector3().crossVectors(right, tangent).normalize()
 
-                    // TRANSITION LOGIC: GATHER TO SPHERE (Z=-8) THEN EXTEND TO TUNNEL
-
-                    // 1. Gather Target (The Core Sphere at Z=-8)
-                    // Radius 2.0, Fixed Z=-8
                     const gX = Math.cos(ringAngle) * 2.0
                     const gY = Math.sin(ringAngle) * 2.0
                     const gZ = -8.0
 
-                    // 2. Tunnel Target (The Snake Path)
-                    // Radius 5.0 (scaled), Full Curve Position
-                    let tRadius = 5.0 * radiusScale
-                    // Add Pulse & Wobble to tunnel only
+                    let tRadius = 6.0 * radiusScale
                     tRadius += Math.sin(u * 20 - time * 2) * 0.5
                     tRadius += Math.sin(ringAngle * 3 + time * 2 + u * 10) * 0.2
 
@@ -262,72 +201,50 @@ export default function VisualParticles() {
                     const tY = point.y + right.y * Math.cos(ringAngle) * tRadius + correctedUp.y * Math.sin(ringAngle) * tRadius
                     const tZ = point.z + right.z * Math.cos(ringAngle) * tRadius + correctedUp.z * Math.sin(ringAngle) * tRadius
 
-                    // --- MIXING LOGIC ---
                     if (portalProgress < 0.3) {
-                        // PHASE 1: GATHER
-                        // Lerp from Original(curX) to Gather(gX)
                         curX = THREE.MathUtils.lerp(curX, gX, gatherPhase)
                         curY = THREE.MathUtils.lerp(curY, gY, gatherPhase)
                         curZ = THREE.MathUtils.lerp(curZ, gZ, gatherPhase)
                     } else {
-                        // PHASE 2: TUNNEL
-                        // Lerp from Gather(gX) to Tunnel(tX)
-                        // Apply 'Fast Burst' curve for excitement
                         const burst = Math.pow(tunnelPhase, 2.0)
                         curX = THREE.MathUtils.lerp(gX, tX, burst)
                         curY = THREE.MathUtils.lerp(gY, tY, burst)
                         curZ = THREE.MathUtils.lerp(gZ, tZ, burst)
                     }
 
-                    // --- WARP EFFECT ---
                     let scaleZ = 1.0
-                    if (portalProgress > 0.1) {
-                        scaleZ = 1.0 + portalProgress * 10
-                    }
-                    // Random flutter
+                    if (portalProgress > 0.1) scaleZ = 1.0 + portalProgress * 10
                     if (Math.random() > 0.8) scaleZ *= 1.5
-
                     dummy.scale.set(0.05, 0.05, 0.05 * scaleZ)
 
-                    // Orient particle to face direction of travel
-                    dummy.lookAt(
-                        curX + tangent.x,
-                        curY + tangent.y,
-                        curZ + tangent.z
-                    )
+                    dummy.lookAt(curX + tangent.x, curY + tangent.y, curZ + tangent.z)
                 } else {
-                    // Normal Sphere Scale
                     let s = 0.05
                     if (i < particleCount * 0.3) s = 0.08
                     dummy.scale.set(s, s, s)
-                    dummy.rotation.set(0, 0, 0) // Reset rotation
+                    dummy.rotation.set(0, 0, 0)
                 }
 
-                // --- STAGE 3: Galaxy Exit & Dispersal ---
-                if (scrollValue > 17.5) {
-                    const exitPhase = Math.min((scrollValue - 17.5) / 1.5, 1.0)
-                    const dispersal = 200.0 * Math.pow(exitPhase, 2)
+                // 3. GALAXY EXIT
+                if (scrollValue > portalEnd - 3.0) {
+                    const exitPhase = Math.min((scrollValue - (portalEnd - 3.0)) / 3.0, 1.0)
+                    const dispersal = 80.0 * Math.pow(exitPhase, 1.5)
 
                     curX += (Math.random() - 0.5) * dispersal
                     curY += (Math.random() - 0.5) * dispersal
-                    curZ += (Math.random() - 0.5) * dispersal * 0.5
+                    curZ += (Math.random()) * dispersal * 0.5
                 }
 
-                // Opacity Logic
+                // Opacity
                 let pOpacity = 1.0
                 if (portalProgress > 0) {
-                    // Fade if too close to camera (Clip plane)
                     if (curZ > 4) pOpacity = 0
                     else if (curZ > 0) pOpacity = (4 - curZ) / 4.0
-
-                    // Fade if too far (Deep fog)
-                    if (curZ < -400) pOpacity = Math.max(0, (curZ + 500) / 100)
+                    if (curZ < -600) pOpacity = Math.max(0, (curZ + 700) / 100)
                 }
 
                 dummy.position.set(curX, curY, curZ)
-                // Use scale for visibility
                 dummy.scale.multiplyScalar(pOpacity)
-
                 dummy.updateMatrix()
                 meshRef.current.setMatrixAt(i, dummy.matrix)
             }

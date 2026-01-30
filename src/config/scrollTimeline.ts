@@ -95,6 +95,10 @@ export const stages: ScrollStage[] = [
         name: 'visualSim',
         durationVh: 1000, // Visual Visualization
     },
+    {
+        name: 'portal',
+        durationVh: 10000, // Reduced from "infinity" but effectively 30s scroll feel
+    },
 ]
 
 // 自動計算總頁面高度

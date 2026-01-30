@@ -126,8 +126,8 @@ function FullscreenFluid() {
     const currentStageName = getCurrentStageName(scrollValue / (totalPageHeightVh / 1000))
     // Note: ensure getCurrentStageName import is available
 
-    // Updated to include new abstract simulation stages
-    if (['cyberpunkEntry', 'descent', 'theaterSpace', 'audioSim', 'visualSim', 'featureMorph', 'featureProjection'].includes(currentStageName)) {
+    // Updated to include new abstract simulation stages (including portal)
+    if (['cyberpunkEntry', 'descent', 'theaterSpace', 'audioSim', 'visualSim', 'portal', 'featureMorph', 'featureProjection'].includes(currentStageName)) {
       darkness = 1.0; // Default to fully black 
 
       // Fade in logic only for cyberpunkEntry transition

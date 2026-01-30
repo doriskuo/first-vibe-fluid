@@ -10,7 +10,6 @@ export default function VisualParticles() {
     const dummy = useMemo(() => new THREE.Object3D(), [])
 
     // Config
-    // Config
     const particleCount = 15000 // HIGH DENSITY for solid rings
     const startVh = 8.0
     const endVh = 18.9
@@ -183,8 +182,9 @@ export default function VisualParticles() {
         // Sub-phases
         // 0.0 - 0.05: Morph from Sphere to Tunnel Start
         // 0.05 - 1.0: Fly through Tunnel
-        // Transition Phase: 0 -> 0.1 (Implode & Open Hole)
-        const transformPhase = Math.min(portalProgress * 10.0, 1.0)
+        // Transition Phase: 0 -> 0.3 (Gather to Z=-8 Sphere) -> 1.0 (Stretch to Tunnel)
+        const gatherPhase = Math.min(portalProgress * 3.33, 1.0)
+        const tunnelPhase = Math.max(0, (portalProgress - 0.3) / 0.7)
 
         // Speed Calculation: Base + Scroll Surge
         // We want a constant flow + boost when scrolling
@@ -243,29 +243,41 @@ export default function VisualParticles() {
                     }
                     const correctedUp = new THREE.Vector3().crossVectors(right, tangent).normalize()
 
-                    // Project point onto the ring plane
-                    let ringRadius = 5.0 * radiusScale
-                    // Pulse ring size
-                    ringRadius += Math.sin(u * 20 - time * 2) * 0.5
+                    // TRANSITION LOGIC: GATHER TO SPHERE (Z=-8) THEN EXTEND TO TUNNEL
 
-                    // Organic Wobble (Noise)
-                    // Add sine wave offset based on angle and time
-                    const wobble = Math.sin(ringAngle * 3 + time * 2 + u * 10) * 0.2
-                    ringRadius += wobble
+                    // 1. Gather Target (The Core Sphere at Z=-8)
+                    // Radius 2.0, Fixed Z=-8
+                    const gX = Math.cos(ringAngle) * 2.0
+                    const gY = Math.sin(ringAngle) * 2.0
+                    const gZ = -8.0
 
-                    // TRANSITION: OPENING HOLE EFFECT
-                    // Grows from 0 (closed) to full tunnel radius
-                    ringRadius *= Math.pow(transformPhase, 0.5)
+                    // 2. Tunnel Target (The Snake Path)
+                    // Radius 5.0 (scaled), Full Curve Position
+                    let tRadius = 5.0 * radiusScale
+                    // Add Pulse & Wobble to tunnel only
+                    tRadius += Math.sin(u * 20 - time * 2) * 0.5
+                    tRadius += Math.sin(ringAngle * 3 + time * 2 + u * 10) * 0.2
 
-                    const tX = point.x + right.x * Math.cos(ringAngle) * ringRadius + correctedUp.x * Math.sin(ringAngle) * ringRadius
-                    const tY = point.y + right.y * Math.cos(ringAngle) * ringRadius + correctedUp.y * Math.sin(ringAngle) * ringRadius
-                    const tZ = point.z + right.z * Math.cos(ringAngle) * ringRadius + correctedUp.z * Math.sin(ringAngle) * ringRadius
+                    const tX = point.x + right.x * Math.cos(ringAngle) * tRadius + correctedUp.x * Math.sin(ringAngle) * tRadius
+                    const tY = point.y + right.y * Math.cos(ringAngle) * tRadius + correctedUp.y * Math.sin(ringAngle) * tRadius
+                    const tZ = point.z + right.z * Math.cos(ringAngle) * tRadius + correctedUp.z * Math.sin(ringAngle) * tRadius
 
-                    // --- BLEND: Sphere -> Tunnel ---
-                    // Smoothly interpolate positions
-                    curX = THREE.MathUtils.lerp(curX, tX, transformPhase)
-                    curY = THREE.MathUtils.lerp(curY, tY, transformPhase)
-                    curZ = THREE.MathUtils.lerp(curZ, tZ, transformPhase)
+                    // --- MIXING LOGIC ---
+                    if (portalProgress < 0.3) {
+                        // PHASE 1: GATHER
+                        // Lerp from Original(curX) to Gather(gX)
+                        curX = THREE.MathUtils.lerp(curX, gX, gatherPhase)
+                        curY = THREE.MathUtils.lerp(curY, gY, gatherPhase)
+                        curZ = THREE.MathUtils.lerp(curZ, gZ, gatherPhase)
+                    } else {
+                        // PHASE 2: TUNNEL
+                        // Lerp from Gather(gX) to Tunnel(tX)
+                        // Apply 'Fast Burst' curve for excitement
+                        const burst = Math.pow(tunnelPhase, 2.0)
+                        curX = THREE.MathUtils.lerp(gX, tX, burst)
+                        curY = THREE.MathUtils.lerp(gY, tY, burst)
+                        curZ = THREE.MathUtils.lerp(gZ, tZ, burst)
+                    }
 
                     // --- WARP EFFECT ---
                     let scaleZ = 1.0

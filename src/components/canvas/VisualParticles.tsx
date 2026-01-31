@@ -64,18 +64,9 @@ export default function VisualParticles() {
     }, [])
 
 
-    // Define the "Snake" Path - GENTLE VERSION (Pre-Rollercoaster)
-    const tunnelCurve = useMemo(() => {
-        const points = [
-            new THREE.Vector3(0, 0, 0),
-            new THREE.Vector3(0, 0, -20),
-            new THREE.Vector3(20, -10, -100),   // Gentle Right
-            new THREE.Vector3(-20, 10, -200),   // Gentle Left
-            new THREE.Vector3(10, 5, -350),     // Slight Adjust
-            new THREE.Vector3(0, 0, -500),      // Return Center
-        ]
-        return new THREE.CatmullRomCurve3(points, false, 'catmullrom', 0.5)
-    }, [])
+    // tunnelCurve is now DYNAMIC - will be created inside useFrame based on flowSpeed
+    // This placeholder is just for type reference
+    const tunnelCurveRef = useRef<THREE.CatmullRomCurve3 | null>(null)
 
     const tunnelData = useMemo(() => {
         const arr = new Float32Array(particleCount * 3)
@@ -180,7 +171,36 @@ export default function VisualParticles() {
                     const ringAngle = tunnelData[i * 3 + 1]
                     const radiusScale = tunnelData[i * 3 + 2]
 
-                    let loopProgress = (ringStartU + flowSpeed * 0.2) % 1.0
+                    // === DYNAMIC CURVE GENERATION ===
+                    // Create curve points that change based on flowSpeed
+                    // Front stays at (0,0,z), back curves based on scroll progress
+                    const bendPhase = flowSpeed * 0.8 // Faster curve rotation
+                    const bendAmplitude = 60 // Stronger bending
+
+                    const dynamicPoints = [
+                        new THREE.Vector3(0, 0, 0),           // Front: always centered
+                        new THREE.Vector3(0, 0, -15),         // Near front: centered
+                        new THREE.Vector3(
+                            Math.sin(bendPhase * 1.2) * bendAmplitude,
+                            Math.cos(bendPhase * 0.9) * bendAmplitude * 0.6,
+                            -40
+                        ),
+                        new THREE.Vector3(
+                            Math.sin(bendPhase * 1.5 + 1.2) * bendAmplitude * 0.8,
+                            Math.cos(bendPhase * 1.1 + 0.8) * bendAmplitude * 0.7,
+                            -80
+                        ),
+                        new THREE.Vector3(
+                            Math.sin(bendPhase * 1.3 + 2.5) * bendAmplitude * 0.6,
+                            Math.cos(bendPhase * 0.8 + 1.5) * bendAmplitude * 0.5,
+                            -120
+                        ),
+                        new THREE.Vector3(0, 0, -150),        // Far end (much shorter)
+                    ]
+
+                    const tunnelCurve = new THREE.CatmullRomCurve3(dynamicPoints, false, 'catmullrom', 0.5)
+
+                    let loopProgress = (ringStartU + flowSpeed * 0.5) % 1.0 // Looping flow
                     let u = 1.0 - loopProgress
 
                     const point = tunnelCurve.getPointAt(u)

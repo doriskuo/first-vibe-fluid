@@ -209,6 +209,13 @@ export default function VisualParticles() {
                     if (right.lengthSq() < 0.001) right.set(1, 0, 0)
                     const correctedUp = new THREE.Vector3().crossVectors(right, tangent).normalize()
 
+                    // === INHERITANCE CHAIN ===
+                    // First ring (u=0) at center, last ring (u=1) has full curve offset
+                    // Each ring naturally inherits reduced offset from behind
+                    const inheritFactor = Math.pow(u, 1.2)  // Smooth decay toward camera
+                    const inheritedX = point.x * inheritFactor
+                    const inheritedY = point.y * inheritFactor
+
                     const gX = Math.cos(ringAngle) * 2.0
                     const gY = Math.sin(ringAngle) * 2.0
                     const gZ = -8.0
@@ -217,8 +224,9 @@ export default function VisualParticles() {
                     tRadius += Math.sin(u * 20 - time * 2) * 0.5
                     tRadius += Math.sin(ringAngle * 3 + time * 2 + u * 10) * 0.2
 
-                    const tX = point.x + right.x * Math.cos(ringAngle) * tRadius + correctedUp.x * Math.sin(ringAngle) * tRadius
-                    const tY = point.y + right.y * Math.cos(ringAngle) * tRadius + correctedUp.y * Math.sin(ringAngle) * tRadius
+                    // Use inherited X/Y for tunnel position
+                    const tX = inheritedX + right.x * Math.cos(ringAngle) * tRadius + correctedUp.x * Math.sin(ringAngle) * tRadius
+                    const tY = inheritedY + right.y * Math.cos(ringAngle) * tRadius + correctedUp.y * Math.sin(ringAngle) * tRadius
                     const tZ = point.z + right.z * Math.cos(ringAngle) * tRadius + correctedUp.z * Math.sin(ringAngle) * tRadius
 
                     if (portalProgress < 0.3) {

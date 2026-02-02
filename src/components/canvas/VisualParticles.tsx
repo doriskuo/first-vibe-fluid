@@ -255,12 +255,13 @@ export default function VisualParticles() {
                     curZ += (Math.random()) * dispersal * 0.5
                 }
 
-                // Opacity
+                // Opacity - fade distant particles to focus view inside tunnel
                 let pOpacity = 1.0
                 if (portalProgress > 0) {
                     if (curZ > 4) pOpacity = 0
                     else if (curZ > 0) pOpacity = (4 - curZ) / 4.0
-                    if (curZ < -600) pOpacity = Math.max(0, (curZ + 700) / 100)
+                    // More aggressive fade: z=-40 to z=-100
+                    if (curZ < -40) pOpacity *= Math.max(0, (curZ + 100) / 60)
                 }
 
                 dummy.position.set(curX, curY, curZ)

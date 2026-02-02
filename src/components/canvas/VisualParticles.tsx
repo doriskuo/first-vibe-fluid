@@ -171,37 +171,52 @@ export default function VisualParticles() {
                     const ringAngle = tunnelData[i * 3 + 1]
                     const radiusScale = tunnelData[i * 3 + 2]
 
-                    // === DYNAMIC CURVE GENERATION ===
-                    // Create curve points that change based on flowSpeed
-                    // Front stays at (0,0,z), back curves based on scroll progress
-                    const bendPhase = flowSpeed * 0.8 // Faster curve rotation
-                    const bendAmplitude = 60 // Stronger bending
+                    // === SIMPLER FLOW: CURVE FLOWS TOWARD CAMERA ===
+                    // The curve shape is fixed, it flows toward the camera as a whole
+                    // Particles are fixed to their position on the curve
 
+                    const bendPhase = flowSpeed * 0.5  // Controls curve shape change over time
+                    const bendAmplitude = 50
+
+                    // Create the curve shape - more centered zone at front
                     const dynamicPoints = [
-                        new THREE.Vector3(0, 0, 0),           // Front: always centered
-                        new THREE.Vector3(0, 0, -15),         // Near front: centered
+                        new THREE.Vector3(0, 0, 0),           // At camera: centered
+                        new THREE.Vector3(0, 0, -30),         // Still centered
+                        new THREE.Vector3(0, 0, -60),         // Still centered (extended)
                         new THREE.Vector3(
-                            Math.sin(bendPhase * 1.2) * bendAmplitude,
-                            Math.cos(bendPhase * 0.9) * bendAmplitude * 0.6,
-                            -40
+                            Math.sin(bendPhase * 1.0) * bendAmplitude * 0.5,
+                            Math.cos(bendPhase * 0.7) * bendAmplitude * 0.3,
+                            -90                               // First bend starts here
                         ),
                         new THREE.Vector3(
-                            Math.sin(bendPhase * 1.5 + 1.2) * bendAmplitude * 0.8,
-                            Math.cos(bendPhase * 1.1 + 0.8) * bendAmplitude * 0.7,
-                            -80
+                            Math.sin(bendPhase * 1.2 + 1.0) * bendAmplitude,
+                            Math.cos(bendPhase * 0.9 + 0.5) * bendAmplitude * 0.7,
+                            -130                              // Full bend
                         ),
                         new THREE.Vector3(
-                            Math.sin(bendPhase * 1.3 + 2.5) * bendAmplitude * 0.6,
-                            Math.cos(bendPhase * 0.8 + 1.5) * bendAmplitude * 0.5,
-                            -120
+                            Math.sin(bendPhase * 0.8 + 2.0) * bendAmplitude * 0.6,
+                            Math.cos(bendPhase * 0.6 + 1.0) * bendAmplitude * 0.4,
+                            -180                              // Far end
                         ),
-                        new THREE.Vector3(0, 0, -150),        // Far end (much shorter)
                     ]
 
                     const tunnelCurve = new THREE.CatmullRomCurve3(dynamicPoints, false, 'catmullrom', 0.5)
 
-                    let loopProgress = (ringStartU + flowSpeed * 0.5) % 1.0 // Looping flow
-                    let u = 1.0 - loopProgress
+                    // Each ring has a fixed position in the curve (0 to 1)
+                    // The "flow" is achieved by shifting this position toward camera over time
+                    const tunnelLength = 150  // Z depth of tunnel
+                    const flowOffset = (flowSpeed * 30) % tunnelLength  // How much the curve has flowed
+
+                    // Ring's world Z position (flows toward camera)
+                    const baseZ = -ringStartU * tunnelLength  // Fixed depth in curve
+                    const worldZ = baseZ + flowOffset  // Shifted by flow
+
+                    // When worldZ > 0, the ring has passed the camera - wrap to back
+                    const wrappedZ = worldZ > 0 ? worldZ - tunnelLength : worldZ
+
+                    // Get curve shape at this Z depth
+                    const depthRatio = Math.abs(wrappedZ) / tunnelLength  // 0 = at camera, 1 = far
+                    const u = Math.min(Math.max(depthRatio, 0), 0.99)
 
                     const point = tunnelCurve.getPointAt(u)
                     const tangent = tunnelCurve.getTangentAt(u).normalize()
@@ -209,25 +224,18 @@ export default function VisualParticles() {
                     if (right.lengthSq() < 0.001) right.set(1, 0, 0)
                     const correctedUp = new THREE.Vector3().crossVectors(right, tangent).normalize()
 
-                    // === INHERITANCE CHAIN ===
-                    // First ring (u=0) at center, last ring (u=1) has full curve offset
-                    // Each ring naturally inherits reduced offset from behind
-                    const inheritFactor = Math.pow(u, 1.2)  // Smooth decay toward camera
-                    const inheritedX = point.x * inheritFactor
-                    const inheritedY = point.y * inheritFactor
-
                     const gX = Math.cos(ringAngle) * 2.0
                     const gY = Math.sin(ringAngle) * 2.0
                     const gZ = -8.0
 
                     let tRadius = 6.0 * radiusScale
-                    tRadius += Math.sin(u * 20 - time * 2) * 0.5
-                    tRadius += Math.sin(ringAngle * 3 + time * 2 + u * 10) * 0.2
+                    tRadius += Math.sin(u * 15 - time * 2) * 0.3
+                    tRadius += Math.sin(ringAngle * 3 + time * 1.5) * 0.2
 
-                    // Use inherited X/Y for tunnel position
-                    const tX = inheritedX + right.x * Math.cos(ringAngle) * tRadius + correctedUp.x * Math.sin(ringAngle) * tRadius
-                    const tY = inheritedY + right.y * Math.cos(ringAngle) * tRadius + correctedUp.y * Math.sin(ringAngle) * tRadius
-                    const tZ = point.z + right.z * Math.cos(ringAngle) * tRadius + correctedUp.z * Math.sin(ringAngle) * tRadius
+                    // Position: curve XY offset + ring shape
+                    const tX = point.x + right.x * Math.cos(ringAngle) * tRadius + correctedUp.x * Math.sin(ringAngle) * tRadius
+                    const tY = point.y + right.y * Math.cos(ringAngle) * tRadius + correctedUp.y * Math.sin(ringAngle) * tRadius
+                    const tZ = wrappedZ
 
                     if (portalProgress < 0.3) {
                         curX = THREE.MathUtils.lerp(curX, gX, gatherPhase)

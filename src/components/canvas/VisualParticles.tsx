@@ -137,8 +137,10 @@ export default function VisualParticles() {
             portalProgress = Math.min(Math.max((scrollValue - portalStart) / (portalEnd - portalStart), 0), 1)
         }
 
-        const gatherPhase = Math.min(portalProgress * 3.33, 1.0)
-        const tunnelPhase = Math.max(0, (portalProgress - 0.3) / 0.7)
+        // gatherPhase: 收縮聚攏 (加速版 - 0%~10% 進度即完成)
+        // tunnelPhase: 隧道形成 (10% 開始)
+        const gatherPhase = Math.min(portalProgress * 10, 1.0)   // 10% 進度內完成聚攏 (原本 30%)
+        const tunnelPhase = Math.max(0, (portalProgress - 0.1) / 0.9)  // 10% 開始隧道 (原本 30%)
 
         // SPEED & SURGE - Boosted for speed
         const surge = Math.pow(portalProgress, 1.5) * 15.0 // Increased from 3.0 to 15.0 for very high speed
@@ -237,12 +239,13 @@ export default function VisualParticles() {
                     const tY = point.y + right.y * Math.cos(ringAngle) * tRadius + correctedUp.y * Math.sin(ringAngle) * tRadius
                     const tZ = wrappedZ
 
-                    if (portalProgress < 0.3) {
+                    if (portalProgress < 0.1) {
                         curX = THREE.MathUtils.lerp(curX, gX, gatherPhase)
                         curY = THREE.MathUtils.lerp(curY, gY, gatherPhase)
                         curZ = THREE.MathUtils.lerp(curZ, gZ, gatherPhase)
                     } else {
-                        const burst = Math.pow(tunnelPhase, 2.0)
+                        // burst 指數越小，隧道延伸越快 (原本 2.0，現在 0.7)
+                        const burst = Math.pow(tunnelPhase, 0.7)
                         curX = THREE.MathUtils.lerp(gX, tX, burst)
                         curY = THREE.MathUtils.lerp(gY, tY, burst)
                         curZ = THREE.MathUtils.lerp(gZ, tZ, burst)

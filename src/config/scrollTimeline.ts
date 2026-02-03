@@ -99,6 +99,18 @@ export const stages: ScrollStage[] = [
         name: 'portal',
         durationVh: 40000, // Quadrupled for even longer tunnel experience
     },
+    {
+        name: 'returnToCenter',
+        durationVh: 1000, // VR returns from top-right to center
+    },
+    {
+        name: 'centerLock',
+        durationVh: 1000, // Extended pause - VR settles with lock-in effect, then waits before rotation
+    },
+    {
+        name: 'featureShowcase',
+        durationVh: 5000, // 5 feature points - VR rotation with callouts
+    },
 ]
 
 // 自動計算總頁面高度

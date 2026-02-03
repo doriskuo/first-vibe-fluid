@@ -10,6 +10,7 @@ import VRHeadphones from './VRHeadphones'
 import VRScanEffect from './VRScanEffect'
 import EarcupParticles from './EarcupParticles'
 import HolographicCircuit from './HolographicCircuit'
+import CenterLockEffect from './CenterLockEffect'
 
 /**
  * GlassWaterDrop - 3D 玻璃水滴
@@ -68,6 +69,10 @@ export default function GlassWaterDrop() {
     const [circuitVisible, setCircuitVisible] = useState(false)
     const [circuitOpacity, setCircuitOpacity] = useState(0)
     const [circuitGrowth, setCircuitGrowth] = useState(0)
+
+    // Center Lock 歸位特效狀態
+    const [lockEffectVisible, setLockEffectVisible] = useState(false)
+    const [lockEffectProgress, setLockEffectProgress] = useState(0)
 
     // VR 耳機形狀參數
     const vrParams = useMemo(() => ({
@@ -174,6 +179,19 @@ export default function GlassWaterDrop() {
             const descentStart = 5.2
             const descentEnd = 6.2 // 1000vh duration
 
+            // ===== Phase 4: Return to Center (after portal) =====
+            // portal ends at scrollValue ~49.0
+            const returnStart = 49.0
+            const returnEnd = 50.0   // 1000vh for return animation
+
+            // ===== Phase 4: Center Lock (VR settles at center with subtle effect) =====
+            const lockStart = 50.0
+            const lockEnd = 51.0    // 1000vh pause with settling effect (extended for more pause)
+
+            // ===== Phase 4: Feature Showcase (after lock) =====
+            const showcaseStart = 51.0
+            const showcaseEnd = 56.0  // 5000vh for rotation showcase
+
             // Default State
             let scale = 1.0
             let posX = 0
@@ -181,7 +199,69 @@ export default function GlassWaterDrop() {
             let rotZ = 0
             let rotY = 0
 
-            if (scrollValue > descentStart) {
+            if (scrollValue > showcaseStart) {
+                // ===== PHASE 4C: Feature Showcase - VR rotates at center =====
+                const showcaseProgress = Math.min(Math.max((scrollValue - showcaseStart) / (showcaseEnd - showcaseStart), 0), 1)
+
+                // VR is already at center
+                scale = 0.8
+                posX = 0
+                posY = 0
+
+                // Rotate based on scroll (full 360°)
+                rotY = showcaseProgress * Math.PI * 2  // 0 -> 2π (full rotation)
+                rotZ = 0
+
+                // Hide lock effect
+                setLockEffectVisible(false)
+
+            } else if (scrollValue > lockStart) {
+                // ===== PHASE 4B: Center Lock - VR settles with subtle breathing/pulse =====
+                const lockProgress = Math.min(Math.max((scrollValue - lockStart) / (lockEnd - lockStart), 0), 1)
+
+                // VR is at center, stable
+                posX = 0
+                posY = 0
+                rotZ = 0
+                rotY = 0
+
+                // Subtle breathing/pulse effect during lock (only in first half)
+                if (lockProgress < 0.5) {
+                    const pulse = Math.sin(lockProgress * Math.PI * 4) * 0.02 * (1 - lockProgress * 2)
+                    scale = 0.8 + pulse
+                } else {
+                    scale = 0.8  // Static after effect completes
+                }
+
+                // Trigger lock effect visual:
+                // - First 15%: VR settling, no effect
+                // - 15% to 55%: Effect plays at NORMAL speed (40% of duration = same as original 500vh would give)
+                // - 55% to 100%: Pure static pause before rotation
+                if (lockProgress > 0.15 && lockProgress < 0.55) {
+                    setLockEffectVisible(true)
+                    // Remap 0.15->0.55 to 0->1 for full speed effect
+                    const effectProgress = (lockProgress - 0.15) / 0.4
+                    setLockEffectProgress(effectProgress)
+                } else {
+                    setLockEffectVisible(false)
+                }
+
+            } else if (scrollValue > returnStart) {
+                // ===== PHASE 4A: Return to Center - VR slides back from top-right =====
+                const returnProgress = Math.min(Math.max((scrollValue - returnStart) / (returnEnd - returnStart), 0), 1)
+
+                // Smoothstep for smooth transition
+                const t = returnProgress * returnProgress * (3 - 2 * returnProgress)
+
+                // Return to center and enlarge
+                scale = 0.35 + (t * 0.45)  // 0.35 -> 0.8 (from HUD size to showcase size)
+                posX = 0.6 * (1 - t)       // 0.6 -> 0 (return to center)
+                posY = 0.25 * (1 - t)      // 0.25 -> 0 (return to center)
+                rotZ = 0.05 * (1 - t)      // Remove tilt
+                rotY = -0.15 * (1 - t)     // Reset Y rotation
+
+            } else if (scrollValue > descentStart) {
+                // ===== PHASE 3: Descent - move to top right corner =====
                 const descentProgress = Math.min(Math.max((scrollValue - descentStart) / (descentEnd - descentStart), 0), 1)
 
                 // Smoothstep interpolation
@@ -717,6 +797,12 @@ export default function GlassWaterDrop() {
                     growth={circuitGrowth}
                     parentRotation={headphonesRotation.current}
                 /> */}
+
+                {/* Center Lock 歸位特效 */}
+                <CenterLockEffect
+                    visible={lockEffectVisible}
+                    progress={lockEffectProgress}
+                />
             </group>
         </>
     )

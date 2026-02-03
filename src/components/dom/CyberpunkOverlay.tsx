@@ -7,6 +7,8 @@ import { totalPageHeightVh, getCurrentStageName, scrollConfig } from '@/config/s
 import { motion, useMotionValueEvent } from 'framer-motion'
 import { Zap, Power } from 'lucide-react'
 import CyberpunkGridCanvas from './CyberpunkGridCanvas'
+import FeatureCallout from './FeatureCallout'
+import { getCurrentFeature, type FeaturePoint } from '@/config/featureConfig'
 
 export default function CyberpunkOverlay() {
     const { springProgress } = useScrollAnimation()
@@ -14,13 +16,14 @@ export default function CyberpunkOverlay() {
     const [isInitialized, setIsInitialized] = useState(false)
     const [bgOpacity, setBgOpacity] = useState(0)
     const [uiVisible, setUiVisible] = useState(false)
+    const [activeFeature, setActiveFeature] = useState<FeaturePoint | null>(null)
 
     useMotionValueEvent(springProgress, "change", (latest) => {
         const rawProgress = (latest * 1000) / totalPageHeightVh
         const currentStage = getCurrentStageName(rawProgress)
 
         // Show Black Background (Patterns) - IMMEDIATE
-        if (['cyberpunkEntry', 'descent', 'theaterSpace', 'audioSim', 'visualSim', 'featureMorph', 'featureProjection'].includes(currentStage)) {
+        if (['cyberpunkEntry', 'descent', 'theaterSpace', 'audioSim', 'visualSim', 'returnToCenter', 'centerLock', 'featureShowcase'].includes(currentStage)) {
             // Default 100% opacity
             let targetOpacity = 1;
 
@@ -61,6 +64,24 @@ export default function CyberpunkOverlay() {
             if (!isInitialized && currentStage !== 'cyberpunkEntry') {
                 setLocked(false)
             }
+        }
+
+        // ===== FEATURE SHOWCASE: Update active feature callout =====
+        if (currentStage === 'featureShowcase') {
+            // Get the stage bounds from scrollConfig
+            const stage = scrollConfig.stages.find(s => s.name === 'featureShowcase')
+            if (stage && stage.scroll) {
+                const [start, end] = stage.scroll
+                const stageProgress = (rawProgress - start) / (end - start)
+                const morphProgress = Math.max(0, Math.min(1, stageProgress))
+
+                console.log('FeatureMorph:', { rawProgress, start, end, morphProgress, currentStage })
+
+                const feature = getCurrentFeature(morphProgress)
+                setActiveFeature(feature)
+            }
+        } else {
+            setActiveFeature(null)
         }
     })
 
@@ -169,6 +190,17 @@ export default function CyberpunkOverlay() {
                 </div>
 
             </motion.div>
+
+            {/* 3. Feature Callout Layer - Only shown during featureMorph */}
+            {activeFeature && (
+                <FeatureCallout
+                    title={activeFeature.callout.title}
+                    value={activeFeature.callout.value}
+                    description={activeFeature.callout.description}
+                    position={activeFeature.callout.position}
+                    visible={true}
+                />
+            )}
         </>
     )
 }

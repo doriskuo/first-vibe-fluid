@@ -97,7 +97,7 @@ export const stages: ScrollStage[] = [
     },
     {
         name: 'portal',
-        durationVh: 10000, // Reduced from "infinity" but effectively 30s scroll feel
+        durationVh: 40000, // Quadrupled for even longer tunnel experience
     },
 ]
 

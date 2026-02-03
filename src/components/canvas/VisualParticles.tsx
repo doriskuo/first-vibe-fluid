@@ -19,7 +19,7 @@ export default function VisualParticles() {
     const crystallizeEnd = 8.5
 
     const portalStart = 8.9
-    const portalEnd = 22.0
+    const portalEnd = 49.0    // Matches new scrollValue max (48.9)
 
     const { springProgress } = useScrollAnimation()
 
@@ -261,9 +261,9 @@ export default function VisualParticles() {
                     dummy.rotation.set(0, 0, 0)
                 }
 
-                // 3. GALAXY EXIT
-                if (scrollValue > portalEnd - 3.0) {
-                    const exitPhase = Math.min((scrollValue - (portalEnd - 3.0)) / 3.0, 1.0)
+                // 3. GALAXY EXIT - only in last 5% of scroll
+                if (scrollValue > portalEnd - 0.5) {
+                    const exitPhase = Math.min((scrollValue - (portalEnd - 0.5)) / 0.5, 1.0)
                     const dispersal = 80.0 * Math.pow(exitPhase, 1.5)
 
                     curX += (Math.random() - 0.5) * dispersal

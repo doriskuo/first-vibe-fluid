@@ -4,11 +4,11 @@ import { useEffect, useState } from 'react'
 import { useScrollAnimation } from '@/hooks/useScrollAnimation'
 import { useScrollContext } from '@/components/providers/LenisProvider'
 import { totalPageHeightVh, getCurrentStageName, scrollConfig } from '@/config/scrollTimeline'
-import { motion, useMotionValueEvent } from 'framer-motion'
+import { motion, useMotionValueEvent, AnimatePresence } from 'framer-motion'
 import { Zap, Power } from 'lucide-react'
 import CyberpunkGridCanvas from './CyberpunkGridCanvas'
 import FeatureCallout from './FeatureCallout'
-import { getCurrentFeature, type FeaturePoint } from '@/config/featureConfig'
+import { getCalloutVisibility, type FeaturePoint } from '@/config/featureConfig'
 
 export default function CyberpunkOverlay() {
     const { springProgress } = useScrollAnimation()
@@ -17,6 +17,8 @@ export default function CyberpunkOverlay() {
     const [bgOpacity, setBgOpacity] = useState(0)
     const [uiVisible, setUiVisible] = useState(false)
     const [activeFeature, setActiveFeature] = useState<FeaturePoint | null>(null)
+    const [calloutVisible, setCalloutVisible] = useState(false)
+    const [calloutPhase, setCalloutPhase] = useState<'entering' | 'visible' | 'exiting' | 'hidden'>('hidden')
 
     useMotionValueEvent(springProgress, "change", (latest) => {
         const rawProgress = (latest * 1000) / totalPageHeightVh
@@ -75,13 +77,24 @@ export default function CyberpunkOverlay() {
                 const stageProgress = (rawProgress - start) / (end - start)
                 const morphProgress = Math.max(0, Math.min(1, stageProgress))
 
-                console.log('FeatureMorph:', { rawProgress, start, end, morphProgress, currentStage })
+                // 使用新的 visibility 函數來控制說明框顯示
+                const visibility = getCalloutVisibility(morphProgress)
 
-                const feature = getCurrentFeature(morphProgress)
-                setActiveFeature(feature)
+                console.log('FeatureMorph:', {
+                    morphProgress,
+                    feature: visibility.feature?.id,
+                    phase: visibility.phase,
+                    visible: visibility.visible
+                })
+
+                setActiveFeature(visibility.feature)
+                setCalloutVisible(visibility.visible)
+                setCalloutPhase(visibility.phase)
             }
         } else {
             setActiveFeature(null)
+            setCalloutVisible(false)
+            setCalloutPhase('hidden')
         }
     })
 
@@ -192,15 +205,20 @@ export default function CyberpunkOverlay() {
             </motion.div>
 
             {/* 3. Feature Callout Layer - Only shown during featureMorph */}
-            {activeFeature && (
-                <FeatureCallout
-                    title={activeFeature.callout.title}
-                    value={activeFeature.callout.value}
-                    description={activeFeature.callout.description}
-                    position={activeFeature.callout.position}
-                    visible={true}
-                />
-            )}
+            {/* AnimatePresence 需要在父層，用 key 來觸發進退場動畫 */}
+            <AnimatePresence mode="wait">
+                {activeFeature && calloutVisible && calloutPhase !== 'hidden' && (
+                    <FeatureCallout
+                        key={activeFeature.id}  // 重要：唯一 key 讓 AnimatePresence 偵測切換
+                        title={activeFeature.callout.title}
+                        value={activeFeature.callout.value}
+                        description={activeFeature.callout.description}
+                        position={activeFeature.callout.position}
+                        targetPoint={activeFeature.targetPoint}
+                        visible={true}
+                    />
+                )}
+            </AnimatePresence>
         </>
     )
 }

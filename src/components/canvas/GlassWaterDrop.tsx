@@ -11,6 +11,7 @@ import VRScanEffect from './VRScanEffect'
 import EarcupParticles from './EarcupParticles'
 import HolographicCircuit from './HolographicCircuit'
 import CenterLockEffect from './CenterLockEffect'
+import { getCalloutVisibility, featurePoints } from '@/config/featureConfig'
 
 /**
  * GlassWaterDrop - 3D 玻璃水滴
@@ -200,17 +201,51 @@ export default function GlassWaterDrop() {
             let rotY = 0
 
             if (scrollValue > showcaseStart) {
-                // ===== PHASE 4C: Feature Showcase - VR rotates at center =====
+                // ===== PHASE 4C: Feature Showcase - VR rotates with feature-specific zoom =====
                 const showcaseProgress = Math.min(Math.max((scrollValue - showcaseStart) / (showcaseEnd - showcaseStart), 0), 1)
 
-                // VR is already at center
-                scale = 0.8
+                // Get current callout visibility state with phase info
+                const visibility = getCalloutVisibility(showcaseProgress)
+
+                // VR is at center
                 posX = 0
                 posY = 0
-
-                // Rotate based on scroll (full 360°)
-                rotY = showcaseProgress * Math.PI * 2  // 0 -> 2π (full rotation)
                 rotZ = 0
+
+                if (visibility.feature) {
+                    const currentFeature = visibility.feature
+                    const currentIndex = featurePoints.findIndex(f => f.id === currentFeature.id)
+                    const nextFeature = featurePoints[currentIndex + 1] || null
+
+                    // 定義階段比例（與 featureConfig 中一致）
+                    const enterZone = 0.15
+                    const visibleZone = 0.60
+                    const exitZone = 0.25
+
+                    if (visibility.phase === 'entering' || visibility.phase === 'visible') {
+                        // 進場區或顯示區：VR 停在當前 feature 的旋轉角度
+                        rotY = currentFeature.rotationY
+                        scale = 0.8 * currentFeature.zoomScale
+                    } else if (visibility.phase === 'exiting' && nextFeature) {
+                        // 退場區：VR 開始旋轉到下一個 feature
+                        // 計算退場區內的局部進度（0 到 1）
+                        const exitStart = enterZone + visibleZone  // 0.75
+                        const exitProgress = (visibility.localProgress - exitStart) / exitZone
+                        const t = exitProgress * exitProgress * (3 - 2 * exitProgress) // smoothstep
+
+                        // 從當前 feature 平滑旋轉到下一個 feature
+                        rotY = currentFeature.rotationY + (nextFeature.rotationY - currentFeature.rotationY) * t
+                        scale = 0.8 * (currentFeature.zoomScale + (nextFeature.zoomScale - currentFeature.zoomScale) * t)
+                    } else {
+                        // exiting 但沒有下一個 feature（最後一個）
+                        rotY = currentFeature.rotationY
+                        scale = 0.8 * currentFeature.zoomScale
+                    }
+                } else {
+                    // Fallback: simple rotation
+                    rotY = showcaseProgress * Math.PI * 2
+                    scale = 0.8
+                }
 
                 // Hide lock effect
                 setLockEffectVisible(false)

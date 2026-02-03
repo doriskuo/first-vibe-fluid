@@ -274,6 +274,23 @@ export default function VisualParticles() {
                     curZ += (Math.random()) * dispersal * 0.5
                 }
 
+                // 4. VR RETURN TO CENTER - particles slow down and become subtle
+                // Keep atmosphere but don't steal focus from VR
+                const vrReturnStart = portalEnd  // 49.0
+                const vrReturnEnd = portalEnd + 1.5  // Transition over 1.5 units
+                let vrReturnFade = 1.0
+
+                if (scrollValue > vrReturnStart) {
+                    const fadeProgress = Math.min((scrollValue - vrReturnStart) / (vrReturnEnd - vrReturnStart), 1.0)
+                    // Fade to 30% opacity (not completely gone) - 保留氛圍感
+                    vrReturnFade = 1.0 - fadeProgress * 0.7  // 1.0 -> 0.3
+
+                    // Slow down particle movement significantly
+                    const slowDown = 1.0 - fadeProgress * 0.9  // Almost stop but not completely
+                    curX *= slowDown
+                    curY *= slowDown
+                }
+
                 // Opacity - fade distant particles to focus view inside tunnel
                 let pOpacity = 1.0
                 if (portalProgress > 0) {
@@ -282,6 +299,9 @@ export default function VisualParticles() {
                     // More aggressive fade: z=-40 to z=-100
                     if (curZ < -40) pOpacity *= Math.max(0, (curZ + 100) / 60)
                 }
+
+                // Apply VR return fade
+                pOpacity *= vrReturnFade
 
                 dummy.position.set(curX, curY, curZ)
                 dummy.scale.multiplyScalar(pOpacity)

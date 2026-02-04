@@ -3,17 +3,15 @@
 import { useRef, useMemo, useState, useEffect } from 'react'
 import { useFrame } from '@react-three/fiber'
 import * as THREE from 'three'
-
-import { RoundedBox } from '@react-three/drei'
+import { RoundedBox, QuadraticBezierLine } from '@react-three/drei'
 
 // ==================== [組件] 玻璃面板 (Premium Crystal) ====================
-// 使用 RoundedBox 製作有厚度、有導角的精品玻璃
 function GlassPanel({
     width = 0.3,
     height = 0.2,
     opacity = 1,
     children,
-    color = '#ffffff' // 預設改為純淨白或微透藍，讓 attenuation 決定顏色
+    color = '#ffffff'
 }: {
     width?: number
     height?: number
@@ -21,74 +19,61 @@ function GlassPanel({
     children?: React.ReactNode
     color?: string
 }) {
-    // 邊框光暈 geometry (稍微大一點點)
-    const glowWidth = width + 0.01
-    const glowHeight = height + 0.01
+    const borderPoints = useMemo(() => {
+        const hw = width / 2
+        const hh = height / 2
+        const cornerSize = Math.min(width, height) * 0.1
+        return [
+            new THREE.Vector3(-hw, hh - cornerSize, 0),
+            new THREE.Vector3(-hw, -hh, 0),
+            new THREE.Vector3(hw - cornerSize, -hh, 0),
+            new THREE.Vector3(hw, -hh + cornerSize, 0),
+            new THREE.Vector3(hw, hh, 0),
+            new THREE.Vector3(-hw + cornerSize, hh, 0),
+            new THREE.Vector3(-hw, hh - cornerSize, 0),
+        ]
+    }, [width, height])
+    const borderGeo = useMemo(() => new THREE.BufferGeometry().setFromPoints(borderPoints), [borderPoints])
 
     return (
         <group>
-            {/* 1. 精品玻璃本體 (實體厚度) */}
+            {/* Crystal Body */}
             <RoundedBox args={[width, height, 0.02]} radius={0.015} smoothness={4}>
                 <meshPhysicalMaterial
                     color={color}
-                    transmission={1.0}       // 全透光
-                    roughness={0.0}          // 極度光滑
-                    metalness={0.1}
-                    thickness={0.08}         // 厚度感 (產生折射)
-                    ior={1.6}                // 接近水晶的折射率
+                    transmission={1.0}
+                    roughness={0}
+                    metalness={0} // 玻璃是非金屬
+                    thickness={0.08}
+                    ior={1.5}
+                    envMapIntensity={0} // 完全移除環境反射 (素色)
                     clearcoat={1.0}
                     clearcoatRoughness={0.0}
-                    attenuationColor="#00ffff" // 玻璃內部的深色
-                    attenuationDistance={0.2}  // 顏色衰減距離
+                    attenuationColor="#00ffff"
+                    attenuationDistance={0.2}
                     transparent
                     opacity={opacity}
                     side={THREE.DoubleSide}
                 />
             </RoundedBox>
 
-            {/* 2. 邊緣高光 (Rim Light) - 用細框勾勒 */}
+            {/* Rim Light */}
             <mesh position={[0, 0, 0]}>
                 <planeGeometry args={[width, height]} />
-                <meshBasicMaterial
-                    color="#88ffff"
-                    wireframe
-                    transparent
-                    opacity={opacity * 0.3}
-                />
+                <meshBasicMaterial color="#88ffff" wireframe transparent opacity={opacity * 0.3} />
             </mesh>
 
-            {/* 3. 內部發光層 (Inner Glow) - 增加層次感 */}
-            <mesh position={[0, 0, -0.011]}>
-                <planeGeometry args={[width * 0.95, height * 0.95]} />
-                <meshBasicMaterial
-                    color="#00ffff"
-                    transparent
-                    opacity={opacity * 0.1}
-                    blending={THREE.AdditiveBlending}
-                />
-            </mesh>
-
-            {/* 4. 四角裝飾 (Tech Corners) */}
+            {/* Corners */}
             <group position={[0, 0, 0.015]}>
-                <mesh position={[-width / 2 + 0.01, height / 2 - 0.01, 0]}>
-                    <circleGeometry args={[0.003, 8]} />
-                    <meshBasicMaterial color="#ffffff" opacity={opacity} transparent blending={THREE.AdditiveBlending} />
-                </mesh>
-                <mesh position={[width / 2 - 0.01, height / 2 - 0.01, 0]}>
-                    <circleGeometry args={[0.003, 8]} />
-                    <meshBasicMaterial color="#ffffff" opacity={opacity} transparent blending={THREE.AdditiveBlending} />
-                </mesh>
-                <mesh position={[-width / 2 + 0.01, -height / 2 + 0.01, 0]}>
-                    <circleGeometry args={[0.003, 8]} />
-                    <meshBasicMaterial color="#ffffff" opacity={opacity} transparent blending={THREE.AdditiveBlending} />
-                </mesh>
-                <mesh position={[width / 2 - 0.01, -height / 2 + 0.01, 0]}>
-                    <circleGeometry args={[0.003, 8]} />
-                    <meshBasicMaterial color="#ffffff" opacity={opacity} transparent blending={THREE.AdditiveBlending} />
-                </mesh>
+                {[[-1, 1], [1, 1], [-1, -1], [1, -1]].map(([x, y], i) => (
+                    <mesh key={i} position={[x * (width / 2 - 0.01), y * (height / 2 - 0.01), 0]}>
+                        <circleGeometry args={[0.003, 8]} />
+                        <meshBasicMaterial color="#ffffff" opacity={opacity} transparent blending={THREE.AdditiveBlending} />
+                    </mesh>
+                ))}
             </group>
 
-            {/* 5. 內容插槽 (浮在玻璃表面一點點) */}
+            {/* Content Container */}
             <group position={[0, 0, 0.02]}>
                 {children}
             </group>
@@ -96,22 +81,230 @@ function GlassPanel({
     )
 }
 
-// ==================== [組件] 數據圖表 (Fake Data Viz) ====================
+// ==================== [組件] 3D 全息地球 (Holographic Globe) ====================
+function GlobePanel({ opacity }: { opacity: number }) {
+    const groupRef = useRef<THREE.Group>(null)
+
+    useFrame((state, delta) => {
+        if (groupRef.current) {
+            groupRef.current.rotation.y += delta * 0.1
+        }
+    })
+
+    const { points, connections } = useMemo(() => {
+        const pts = []
+        const connections = []
+        const radius = 0.12
+
+        const clusters = [
+            { lat: 40, lon: -100, s: 0.5 },   // NA
+            { lat: -20, lon: -60, s: 0.4 },   // SA
+            { lat: 50, lon: 10, s: 0.3 },     // EU
+            { lat: 0, lon: 20, s: 0.5 },      // AF
+            { lat: 40, lon: 100, s: 0.6 },    // AS
+            { lat: -25, lon: 140, s: 0.4 }    // AU
+        ]
+
+        const latLonToVector3 = (lat: number, lon: number, r: number) => {
+            const phi = (90 - lat) * (Math.PI / 180)
+            const theta = (lon + 180) * (Math.PI / 180)
+            const x = -(r * Math.sin(phi) * Math.cos(theta))
+            const z = (r * Math.sin(phi) * Math.sin(theta))
+            const y = (r * Math.cos(phi))
+            return new THREE.Vector3(x, y, z)
+        }
+
+        const clusterPoints: THREE.Vector3[] = []
+        for (let c of clusters) {
+            const count = 150 + Math.random() * 100
+            const center = latLonToVector3(c.lat, c.lon, radius)
+            clusterPoints.push(center)
+
+            for (let i = 0; i < count; i++) {
+                const latOffset = (Math.random() - 0.5) * 60 * c.s
+                const lonOffset = (Math.random() - 0.5) * 80 * c.s
+                const p = latLonToVector3(c.lat + latOffset, c.lon + lonOffset, radius)
+                pts.push(p.x, p.y, p.z)
+            }
+        }
+
+        for (let i = 0; i < 300; i++) {
+            const lat = (Math.random() - 0.5) * 180
+            const lon = (Math.random() - 0.5) * 360
+            const p = latLonToVector3(lat, lon, radius)
+            pts.push(p.x, p.y, p.z)
+        }
+
+        for (let i = 0; i < clusterPoints.length; i++) {
+            for (let j = i + 1; j < clusterPoints.length; j++) {
+                if (Math.random() > 0.6) continue
+                const start = clusterPoints[i]
+                const end = clusterPoints[j]
+                const dist = start.distanceTo(end)
+                if (dist > radius * 1.8) continue
+
+                const mid = start.clone().add(end).multiplyScalar(0.5).normalize().multiplyScalar(radius * (1.2 + Math.random() * 0.3))
+                const curve = new THREE.QuadraticBezierCurve3(start, mid, end)
+                connections.push(curve.getPoints(20))
+            }
+        }
+
+        return {
+            points: new Float32Array(pts),
+            connections
+        }
+    }, [])
+
+    const geo = useMemo(() => {
+        const g = new THREE.BufferGeometry()
+        g.setAttribute('position', new THREE.BufferAttribute(points, 3))
+        return g
+    }, [points])
+
+    return (
+        <group ref={groupRef}>
+            <points geometry={geo}>
+                <pointsMaterial size={0.003} color="#00ffff" transparent opacity={opacity} sizeAttenuation={false} />
+            </points>
+            <mesh>
+                <sphereGeometry args={[0.115, 32, 32]} />
+                <meshBasicMaterial color="#000033" transparent opacity={opacity * 0.8} />
+            </mesh>
+            <mesh>
+                <sphereGeometry args={[0.12, 32, 32]} />
+                <meshBasicMaterial color="#00ffff" transparent opacity={opacity * 0.15} wireframe />
+            </mesh>
+            {connections.map((pts, i) => (
+                <line key={i}>
+                    <bufferGeometry>
+                        <bufferAttribute attach="attributes-position" args={[new Float32Array(pts.flatMap(p => [p.x, p.y, p.z])), 3]} />
+                    </bufferGeometry>
+                    <lineBasicMaterial color="#ffffff" transparent opacity={opacity * 0.4} />
+                </line>
+            ))}
+        </group>
+    )
+}
+
+// ==================== [組件] 紋理地圖與背景 (Image Based Flat Map) ====================
+function FlatMapContent({ opacity }: { opacity: number }) {
+    // 1. 背景圖 (Taipei 101 Night View)
+    // 使用更可靠的 Unsplash Source URL
+    const bgMap = useMemo(() => new THREE.TextureLoader().load('https://images.unsplash.com/photo-1542259685-9a84f98126d4?q=80&w=1000&auto=format&fit=crop'), [])
+
+    // 2. 世界地圖紋理 (Wikimedia Commons - High Contrast)
+    // 黑底白陸地的地圖最適合 Additive Blending
+    // 這裡使用一張透明底的 PNG，我們會把它染成青色
+    // 上面這張是 Blue Marble，太複雜，改用簡單的剪像
+    // 換：透明底黑色大陸
+    // 換：Wikimedia Blank Map (Transparent)
+    const mapTex = useMemo(() => new THREE.TextureLoader().load('https://upload.wikimedia.org/wikipedia/commons/thumb/e/ec/World_map_blank_without_borders.svg/1280px-World_map_blank_without_borders.svg.png'), [])
+
+    // 4. 計算台灣座標 (Taiwan: 23.5N, 121E)
+    // 調整比例：原圖約為 1.83:1 (Wikipedia generic mercator often cuts poles)
+    // 試著將高度稍微拉高以修正擠壓感
+    const mapW = 0.65
+    const mapH = 0.38 // Modified Aspect Ratio: ~1.71
+
+    // UV Mapping 重新校準
+    // Taiwan (121, 23.5)
+    // 簡單線性內插修正
+    // 經度 u: (121 + 170) / 340 (假設地圖沒包含完整360，或有裁切) -> 試誤法微調
+    // 根據視覺經驗，亞洲在右側偏上
+    const twX = (0.78 - 0.5) * mapW // 微調 X
+    const twY = (0.64 - 0.5) * mapH // 微調 Y
+
+    return (
+        <group>
+            {/* 背景圖 (Taipei 101 Style) */}
+            <mesh position={[0, 0, -0.01]}>
+                <planeGeometry args={[0.7, 0.45]} />
+                <meshBasicMaterial map={bgMap} transparent opacity={opacity * 0.5} toneMapped={false} />
+            </mesh>
+
+            {/* 暗色濾鏡 (壓暗背景) */}
+            <mesh position={[0, 0, -0.005]}>
+                <planeGeometry args={[0.7, 0.45]} />
+                <meshBasicMaterial color="#001133" transparent opacity={opacity * 0.6} />
+            </mesh>
+
+            {/* 地圖層 (Cyan Hologram) */}
+            <mesh position={[0, 0, 0]}>
+                <planeGeometry args={[mapW, mapH]} />
+                {/* 使用簡單材質確保可見 */}
+                <meshBasicMaterial
+                    map={mapTex}
+                    color="#00ffff"
+                    transparent
+                    opacity={opacity * 0.8}
+                // blending={THREE.AdditiveBlending} // 如果圖是透明底，Additive 會讓它發光
+                />
+            </mesh>
+
+            {/* 掃描線網格效果 (Overlay) */}
+            <mesh position={[0, 0, 0.001]}>
+                <planeGeometry args={[mapW, mapH]} />
+                <meshBasicMaterial
+                    color="#00ffff"
+                    transparent
+                    opacity={opacity * 0.1}
+                    wireframe
+                    side={THREE.DoubleSide}
+                />
+            </mesh>
+
+
+            {/* Taiwan Highlight */}
+            <group position={[twX, twY, 0.01]}>
+                <mesh>
+                    <circleGeometry args={[0.006, 16]} />
+                    <meshBasicMaterial color="#ff0000" transparent opacity={opacity} />
+                </mesh>
+                <mesh>
+                    <ringGeometry args={[0.008, 0.012, 32]} />
+                    <meshBasicMaterial color="#ff0000" transparent opacity={opacity * 0.8} side={THREE.DoubleSide} />
+                </mesh>
+                <PulseRing color="#ff0000" scale={2.5} opacity={opacity} speed={3} />
+            </group>
+        </group>
+    )
+}
+
+function PulseRing({ color, scale = 1, opacity, speed = 1 }: any) {
+    const ref = useRef<THREE.Mesh>(null)
+    useFrame((state) => {
+        if (ref.current) {
+            const s = 1 + (state.clock.elapsedTime * speed) % scale
+            ref.current.scale.set(s, s, s)
+            const o = 1 - ((s - 1) / scale)
+            if (Array.isArray(ref.current.material)) {
+                // ignore
+            } else {
+                ref.current.material.opacity = o * opacity
+            }
+        }
+    })
+    return (
+        <mesh ref={ref}>
+            <ringGeometry args={[0.008, 0.01, 32]} />
+            <meshBasicMaterial color={color} transparent opacity={opacity} side={THREE.DoubleSide} />
+        </mesh>
+    )
+}
+
+// ==================== [組件] 數據圖表 ====================
 function DataListPanel({ opacity }: { opacity: number }) {
     return (
         <group>
-            {/* 標題 (Title) */}
             <mesh position={[-0.05, 0.1, 0]}>
                 <planeGeometry args={[0.08, 0.015]} />
                 <meshBasicMaterial color="#00ffff" transparent opacity={opacity} />
             </mesh>
-
-            {/* 數據條 (Data Bars) - 縮減數量與範圍以適配面板 */}
             {Array.from({ length: 5 }).map((_, i) => {
-                const y = 0.05 - i * 0.05 // 範圍: 0.05 -> -0.15 (在 0.3 高度面板內)
-                const w = 0.05 + Math.random() * 0.1 // 寬度: 0.05~0.15 (在 0.25 寬度面板內)
+                const y = 0.05 - i * 0.05
+                const w = 0.05 + Math.random() * 0.1
                 return (
-                    <mesh key={i} position={[-0.02, y, 0]}> {/* 置中微調 */}
+                    <mesh key={i} position={[-0.02, y, 0]}>
                         <planeGeometry args={[w, 0.006]} />
                         <meshBasicMaterial color="#00ffff" transparent opacity={opacity * (0.3 + Math.random() * 0.5)} />
                     </mesh>
@@ -156,31 +349,20 @@ function WaveformPanel({ opacity }: { opacity: number }) {
     )
 }
 
-// ==================== [模式 D] 玻璃儀表板 (Glass UI) ====================
-function PatternGlassUI({ opacity }: { opacity: number }) {
+// ==================== [模式 D] 3D 地球模式 ====================
+function PatternGlassGlobe({ opacity }: { opacity: number }) {
     return (
         <group>
-            {/* 中央主面板 (模擬臉部識別或掃描框) */}
             <GlassPanel width={0.5} height={0.35} opacity={opacity}>
-                {/* 掃描線動畫 */}
-                <mesh position={[0, 0, 0]}>
-                    <ringGeometry args={[0.1, 0.105, 6]} />
-                    <meshBasicMaterial color="#00ffff" transparent opacity={opacity * 0.5} />
-                </mesh>
-                <mesh position={[0, 0, 0]} scale={[1.5, 1, 1]}>
-                    <planeGeometry args={[0.3, 0.2]} />
-                    <meshBasicMaterial color="#00ffff" wireframe transparent opacity={opacity * 0.1} />
-                </mesh>
+                <GlobePanel opacity={opacity} />
             </GlassPanel>
 
-            {/* 左側數據面板 - 懸浮於左側並微轉 */}
             <group position={[-0.4, 0, 0.1]} rotation={[0, 0.3, 0]}>
                 <GlassPanel width={0.25} height={0.3} opacity={opacity} color="#0088ff">
                     <DataListPanel opacity={opacity} />
                 </GlassPanel>
             </group>
 
-            {/* 右側分析面板 - 懸浮於右側並微轉 */}
             <group position={[0.4, 0, 0.1]} rotation={[0, -0.3, 0]}>
                 <GlassPanel width={0.25} height={0.3} opacity={opacity} color="#ff00ff">
                     <WaveformPanel opacity={opacity} />
@@ -190,7 +372,19 @@ function PatternGlassUI({ opacity }: { opacity: number }) {
     )
 }
 
-// ==================== [模式 A] 核心介面 (Hex Brain) ====================
+// ==================== [模式 E] 平面地圖模式 (New) ====================
+function PatternFlatMap({ opacity }: { opacity: number }) {
+    return (
+        <group>
+            {/* 特大號面板 for Flat Map */}
+            <GlassPanel width={0.7} height={0.45} opacity={opacity}>
+                <FlatMapContent opacity={opacity} />
+            </GlassPanel>
+        </group>
+    )
+}
+
+// ==================== [模式 A] Hex Brain ====================
 function PatternHex({ opacity }: { opacity: number }) {
     const groupRef = useRef<THREE.Group>(null)
     const ringRef = useRef<THREE.Group>(null)
@@ -201,7 +395,6 @@ function PatternHex({ opacity }: { opacity: number }) {
         if (ringRef.current) ringRef.current.rotation.z = time * 0.2
         if (groupRef.current) groupRef.current.rotation.y = Math.sin(time * 0.5) * 0.1
 
-        // 核心球體自轉
         if (coreRef.current) {
             coreRef.current.rotation.x = time * 0.5
             coreRef.current.rotation.y = time * 0.3
@@ -240,7 +433,7 @@ function PatternHex({ opacity }: { opacity: number }) {
     )
 }
 
-// ==================== [模式 B] 雷達掃描 (Radar Scan) ====================
+// ==================== [模式 B] Radar Scan ====================
 function PatternRadar({ opacity }: { opacity: number }) {
     const scanRef = useRef<THREE.Mesh>(null)
 
@@ -264,7 +457,7 @@ function PatternRadar({ opacity }: { opacity: number }) {
     )
 }
 
-// ==================== [模式 C] 數據球體 (Data Sphere) ====================
+// ==================== [模式 C] Data Sphere ====================
 function PatternSphere({ opacity }: { opacity: number }) {
     const groupRef = useRef<THREE.Group>(null)
     const orbitsRef = useRef<THREE.Group>(null)
@@ -297,54 +490,28 @@ function PatternSphere({ opacity }: { opacity: number }) {
     )
 }
 
-
-// ==================== 光束連接線 (修正：極細緻光束) ====================
+// ==================== Light Beam ====================
 function LightBeam({ opacity = 1, height = 0.08 }: { opacity?: number, height?: number }) {
     const safeOpacity = Math.max(0, opacity)
-
     return (
         <group>
-            {/* 主光束 - 體積感圓錐 (極細 - 0.04) */}
             <mesh position={[0, height / 2, 0]} rotation={[0, 0, 0]}>
                 <cylinderGeometry args={[0.04, 0.003, height, 32, 1, true]} />
-                <meshBasicMaterial
-                    color="#00ffff"
-                    transparent
-                    opacity={safeOpacity * 0.15}
-                    side={THREE.DoubleSide}
-                    depthWrite={false}
-                    blending={THREE.AdditiveBlending}
-                />
+                <meshBasicMaterial color="#00ffff" transparent opacity={safeOpacity * 0.15} side={THREE.DoubleSide} depthWrite={false} blending={THREE.AdditiveBlending} />
             </mesh>
-
-            {/* 核心光束 (變更細) */}
             <mesh position={[0, height / 2, 0]}>
                 <cylinderGeometry args={[0.01, 0.001, height, 16, 1, true]} />
-                <meshBasicMaterial
-                    color="#ccffff"
-                    transparent
-                    opacity={safeOpacity * 0.4}
-                    side={THREE.DoubleSide}
-                    blending={THREE.AdditiveBlending}
-                />
+                <meshBasicMaterial color="#ccffff" transparent opacity={safeOpacity * 0.4} side={THREE.DoubleSide} blending={THREE.AdditiveBlending} />
             </mesh>
-
-            {/* 底部發光環 (變小) */}
             <mesh position={[0, 0, 0]} rotation={[-Math.PI / 2, 0, 0]}>
                 <ringGeometry args={[0, 0.03, 32]} />
-                <meshBasicMaterial
-                    color="#00ffff"
-                    transparent
-                    opacity={safeOpacity * 0.6}
-                    side={THREE.DoubleSide}
-                    blending={THREE.AdditiveBlending}
-                />
+                <meshBasicMaterial color="#00ffff" transparent opacity={safeOpacity * 0.6} side={THREE.DoubleSide} blending={THREE.AdditiveBlending} />
             </mesh>
         </group>
     )
 }
 
-// ==================== 主元件 (狀態控制) ====================
+// ==================== Main Export ====================
 interface HolographicProjectionProps {
     visible: boolean
     opacity?: number
@@ -359,16 +526,14 @@ export default function HolographicProjection({
     vrFlipProgress = 1
 }: HolographicProjectionProps) {
     const groupRef = useRef<THREE.Group>(null)
-
-    // 狀態
-    const [currentPattern, setCurrentPattern] = useState(0) // 0=Hex, 1=Radar, 2=Sphere, 3=GlassUI
+    const [currentPattern, setCurrentPattern] = useState(0) // 0=Hex, 1=Radar, 2=Sphere, 3=GlassGlobe, 4=FlatMap
     const [beamProgress, setBeamProgress] = useState(0)
     const [contentOpacity, setContentOpacity] = useState(0)
     const timerRef = useRef(0)
     const patternTimerRef = useRef(0)
 
     const BEAM_IN_TIME = 0.5
-    const PATTERN_DURATION = 3.5 // 切換間隔 3.5秒
+    const PATTERN_DURATION = 3.5
     const FADE_TIME = 0.5
 
     useFrame((state, delta) => {
@@ -378,20 +543,12 @@ export default function HolographicProjection({
             timerRef.current = 0
             return
         }
-
-        // 1. 總計時 (控制進場)
         timerRef.current += delta
         setBeamProgress(Math.min(timerRef.current / BEAM_IN_TIME, 1))
 
         if (timerRef.current > BEAM_IN_TIME) {
-            // 2. 模式循環邏輯
             patternTimerRef.current += delta
-
-            // 計算當前週期的時間 (0 ~ PATTERN_DURATION)
             const cycleTime = patternTimerRef.current % PATTERN_DURATION
-
-            // 淡入淡出邏輯
-            // 前 FADE_TIME 秒淡入，最後 FADE_TIME 秒淡出，中間全顯
             let fade = 1
             if (cycleTime < FADE_TIME) {
                 fade = cycleTime / FADE_TIME
@@ -399,29 +556,22 @@ export default function HolographicProjection({
                 fade = (PATTERN_DURATION - cycleTime) / FADE_TIME
             }
             setContentOpacity(fade)
-
-            // 切換模式觸發 (當剛好跨過週期時)
             if (patternTimerRef.current >= PATTERN_DURATION) {
                 patternTimerRef.current = 0
-                // 循環四種模式
-                setCurrentPattern((prev) => (prev + 1) % 4)
+                setCurrentPattern((prev) => (prev + 1) % 5) // Mod 5 now
             }
         }
     })
 
     if (!visible) return null
 
-    // 投影位置修正
     return (
         <group ref={groupRef} position={[0, -0.15, 0]}>
-            {/* 光束連接 - 已經變得很細小，作為點綴 */}
             <group position={[0, -0.08, 0]}>
                 <LightBeam opacity={beamProgress * opacity} height={0.08} />
             </group>
 
-            {/* 投影內容容器 - 往上移動到 0.28 */}
             <group position={[0, 0.28, 0]} scale={[0.85, 0.85, 0.85]}>
-                {/* 1. 靜態背景板 (僅保留中間主板) */}
                 <group position={[0, 0, -0.05]}>
                     <mesh>
                         <planeGeometry args={[0.7, 0.55]} />
@@ -430,12 +580,12 @@ export default function HolographicProjection({
                     <gridHelper args={[0.7, 8, '#002a4d', '#001a33']} rotation={[Math.PI / 2, 0, 0]} position={[0, 0, 0.01]} />
                 </group>
 
-                {/* 2. 動態切換的核心區域 */}
                 <group position={[0, 0, 0.02]}>
                     {currentPattern === 0 && <PatternHex opacity={contentOpacity * opacity} />}
                     {currentPattern === 1 && <PatternRadar opacity={contentOpacity * opacity} />}
                     {currentPattern === 2 && <PatternSphere opacity={contentOpacity * opacity} />}
-                    {currentPattern === 3 && <PatternGlassUI opacity={contentOpacity * opacity} />}
+                    {currentPattern === 3 && <PatternGlassGlobe opacity={contentOpacity * opacity} />}
+                    {currentPattern === 4 && <PatternFlatMap opacity={contentOpacity * opacity} />}
                 </group>
             </group>
         </group>

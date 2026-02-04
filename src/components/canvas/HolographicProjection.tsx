@@ -490,22 +490,95 @@ function PatternSphere({ opacity }: { opacity: number }) {
     )
 }
 
-// ==================== Light Beam ====================
-function LightBeam({ opacity = 1, height = 0.08 }: { opacity?: number, height?: number }) {
+// ==================== Light Beam (Volumetric Shader) ====================
+function LightBeam({ opacity = 1, height = 0.25 }: { opacity?: number, height?: number }) {
     const safeOpacity = Math.max(0, opacity)
+    const meshRef = useRef<THREE.Mesh>(null)
+
+    // 自定義 Volumetric Beam Shader
+    const beamMaterial = useMemo(() => {
+        return new THREE.ShaderMaterial({
+            uniforms: {
+                uColor: { value: new THREE.Color("#00aaff") }, // 參考圖的藍色
+                uOpacity: { value: safeOpacity },
+                uTime: { value: 0 }
+            },
+            vertexShader: `
+                varying vec2 vUv;
+                varying vec3 vViewPosition;
+                void main() {
+                    vUv = uv;
+                    vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
+                    vViewPosition = -mvPosition.xyz;
+                    gl_Position = projectionMatrix * mvPosition;
+                }
+            `,
+            fragmentShader: `
+                uniform vec3 uColor;
+                uniform float uOpacity;
+                uniform float uTime;
+                varying vec2 vUv;
+                
+                // 簡單的噪聲函數
+                float random(vec2 st) {
+                    return fract(sin(dot(st.xy, vec2(12.9898,78.233))) * 43758.5453123);
+                }
+
+                void main() {
+                    // 1. 垂直漸變 (底部亮 -> 頂部消失)
+                    float verticalFade = (1.0 - vUv.y); 
+                    verticalFade = pow(verticalFade, 1.5); // 更柔和的衰減
+
+                    // 2. 邊緣柔化 (Cylinder UV.x wraps around)
+                    // 不需要，因為是全圓的
+
+                    // 3. 模擬光束條紋 (Rays)
+                    // 使用 UV.x (水平圓周) 產生條紋
+                    float rays = sin(vUv.x * 40.0 + uTime * 0.5) * 0.5 + 0.5;
+                    rays = pow(rays, 4.0); // 讓條紋更銳利
+                    
+                    // 讓條紋有些隨機感
+                    float noise = random(vec2(vUv.x, floor(uTime * 5.0))) * 0.1;
+                    
+                    float alpha = (0.2 + rays * 0.4) * verticalFade * uOpacity;
+                    
+                    gl_FragColor = vec4(uColor, alpha);
+                }
+            `,
+            transparent: true,
+            depthWrite: false,
+            blending: THREE.AdditiveBlending,
+            side: THREE.DoubleSide
+        })
+    }, [])
+
+    useFrame((state) => {
+        if (meshRef.current) {
+            const mat = meshRef.current.material as THREE.ShaderMaterial;
+            mat.uniforms.uOpacity.value = safeOpacity;
+            mat.uniforms.uTime.value = state.clock.elapsedTime;
+        }
+    })
+
     return (
         <group>
-            <mesh position={[0, height / 2, 0]} rotation={[0, 0, 0]}>
-                <cylinderGeometry args={[0.04, 0.003, height, 32, 1, true]} />
-                <meshBasicMaterial color="#00ffff" transparent opacity={safeOpacity * 0.15} side={THREE.DoubleSide} depthWrite={false} blending={THREE.AdditiveBlending} />
+            {/* 主光束 (Cylinder: TopRadius=0.12, BottomRadius=0.005) */}
+            <mesh ref={meshRef} position={[0, height / 2, 0]}>
+                {/* openEnded cylinder */}
+                <cylinderGeometry args={[0.12, 0.005, height, 64, 1, true]} />
+                <primitive object={beamMaterial} attach="material" />
             </mesh>
-            <mesh position={[0, height / 2, 0]}>
-                <cylinderGeometry args={[0.01, 0.001, height, 16, 1, true]} />
-                <meshBasicMaterial color="#ccffff" transparent opacity={safeOpacity * 0.4} side={THREE.DoubleSide} blending={THREE.AdditiveBlending} />
+
+            {/* 核心過曝亮點 (底部) */}
+            <mesh position={[0, 0, 0]} rotation={[0, 0, 0]}>
+                <sphereGeometry args={[0.008, 16, 16]} />
+                <meshBasicMaterial color="#ffffff" transparent opacity={safeOpacity} blending={THREE.AdditiveBlending} />
             </mesh>
-            <mesh position={[0, 0, 0]} rotation={[-Math.PI / 2, 0, 0]}>
-                <ringGeometry args={[0, 0.03, 32]} />
-                <meshBasicMaterial color="#00ffff" transparent opacity={safeOpacity * 0.6} side={THREE.DoubleSide} blending={THREE.AdditiveBlending} />
+
+            {/* 底部光暈 (Glow on device) */}
+            <mesh position={[0, 0.001, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+                <ringGeometry args={[0, 0.04, 32]} />
+                <meshBasicMaterial color="#0088ff" transparent opacity={safeOpacity * 0.5} side={THREE.DoubleSide} blending={THREE.AdditiveBlending} />
             </mesh>
         </group>
     )
@@ -568,7 +641,7 @@ export default function HolographicProjection({
     return (
         <group ref={groupRef} position={[0, -0.15, 0]}>
             <group position={[0, -0.08, 0]}>
-                <LightBeam opacity={beamProgress * opacity} height={0.08} />
+                <LightBeam opacity={beamProgress * opacity} height={0.18} />
             </group>
 
             <group position={[0, 0.28, 0]} scale={[0.85, 0.85, 0.85]}>

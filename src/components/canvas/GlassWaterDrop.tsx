@@ -10,6 +10,7 @@ import VRHeadphones from './VRHeadphones'
 import VRScanEffect from './VRScanEffect'
 import EarcupParticles from './EarcupParticles'
 import HolographicCircuit from './HolographicCircuit'
+import HolographicProjection from './HolographicProjection'
 import CenterLockEffect from './CenterLockEffect'
 import { getCalloutVisibility, featurePoints } from '@/config/featureConfig'
 
@@ -74,6 +75,11 @@ export default function GlassWaterDrop() {
     // Center Lock 歸位特效狀態
     const [lockEffectVisible, setLockEffectVisible] = useState(false)
     const [lockEffectProgress, setLockEffectProgress] = useState(0)
+
+    // 全息投影狀態（VR朝上投射）
+    const [holoVisible, setHoloVisible] = useState(false)
+    const [holoOpacity, setHoloOpacity] = useState(0)
+    const [vrFlipProgress, setVrFlipProgress] = useState(0)
 
     // VR 耳機形狀參數
     const vrParams = useMemo(() => ({
@@ -199,8 +205,34 @@ export default function GlassWaterDrop() {
             let posY = 0
             let rotZ = 0
             let rotY = 0
+            let rotX = 0  // 新增 X 軸旋轉用於 VR 朝上
 
-            if (scrollValue > showcaseStart) {
+            // ===== PHASE 5: Holographic Projection (VR faces up) =====
+            const holoPhaseStart = 56.0
+            const holoPhaseEnd = 57.0  // 1秒過渡到朝上姿態
+
+            if (scrollValue > holoPhaseStart) {
+                // VR 翻轉朝上，作為投影儀
+                const holoProgress = Math.min(Math.max((scrollValue - holoPhaseStart) / (holoPhaseEnd - holoPhaseStart), 0), 1)
+                const t = holoProgress * holoProgress * (3 - 2 * holoProgress) // smoothstep
+
+                // 設定 VR 翻轉進度（傳給 HolographicProjection）
+                setVrFlipProgress(t)
+
+                // VR 位置：中央偏下
+                posX = 0
+                posY = -0.25 * t  // 稍微下移，讓投影有空間
+                scale = 0.8 - (0.6 * t)  // 縮小到 0.2 (極小)
+
+                // VR 翻轉朝上 (rotation.x 從 0 → -90°)
+                rotX = -Math.PI / 2 * t
+                rotY = 0
+                rotZ = 0
+
+                // Hide lock effect
+                setLockEffectVisible(false)
+
+            } else if (scrollValue > showcaseStart) {
                 // ===== PHASE 4C: Feature Showcase - VR rotates with feature-specific zoom =====
                 const showcaseProgress = Math.min(Math.max((scrollValue - showcaseStart) / (showcaseEnd - showcaseStart), 0), 1)
 
@@ -314,6 +346,7 @@ export default function GlassWaterDrop() {
 
             containerRef.current.scale.set(scale, scale, scale)
             containerRef.current.position.set(posX, posY, 0)
+            containerRef.current.rotation.x = rotX
             containerRef.current.rotation.z = rotZ
             containerRef.current.rotation.y = rotY
         }
@@ -524,6 +557,18 @@ export default function GlassWaterDrop() {
             setCircuitVisible(false)
             setCircuitOpacity(0)
             setCircuitGrowth(0)
+        }
+
+        // ===== 全息投影 (scrollValue 56.0+ 之後，VR 朝上投射) =====
+        const holoStart = 56.0
+        const holoFadeEnd = 56.5
+        if (scrollValue >= holoStart && meshRef.current?.visible) {
+            setHoloVisible(true)
+            const hOpacity = Math.min((scrollValue - holoStart) / (holoFadeEnd - holoStart), 1)
+            setHoloOpacity(hOpacity)
+        } else {
+            setHoloVisible(false)
+            setHoloOpacity(0)
         }
     })
 
@@ -839,6 +884,13 @@ export default function GlassWaterDrop() {
                     progress={lockEffectProgress}
                 />
             </group>
+
+            {/* 全息投影 - 獨立於 VR，在世界座標上方 */}
+            <HolographicProjection
+                visible={holoVisible}
+                opacity={holoOpacity}
+                vrFlipProgress={vrFlipProgress}
+            />
         </>
     )
 }

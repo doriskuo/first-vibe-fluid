@@ -111,6 +111,10 @@ export const stages: ScrollStage[] = [
         name: 'featureShowcase',
         durationVh: 5000, // 5 feature points - VR rotation with callouts
     },
+    {
+        name: 'holographicProjection',
+        durationVh: 3000, // VR faces up, projects holographic effects
+    },
 ]
 
 // 自動計算總頁面高度

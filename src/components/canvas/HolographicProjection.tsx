@@ -194,11 +194,18 @@ function PatternGlassUI({ opacity }: { opacity: number }) {
 function PatternHex({ opacity }: { opacity: number }) {
     const groupRef = useRef<THREE.Group>(null)
     const ringRef = useRef<THREE.Group>(null)
+    const coreRef = useRef<THREE.Mesh>(null)
 
     useFrame((state) => {
         const time = state.clock.elapsedTime
         if (ringRef.current) ringRef.current.rotation.z = time * 0.2
         if (groupRef.current) groupRef.current.rotation.y = Math.sin(time * 0.5) * 0.1
+
+        // 核心球體自轉
+        if (coreRef.current) {
+            coreRef.current.rotation.x = time * 0.5
+            coreRef.current.rotation.y = time * 0.3
+        }
     })
 
     return (
@@ -213,7 +220,7 @@ function PatternHex({ opacity }: { opacity: number }) {
                     <meshBasicMaterial color="#0088ff" transparent opacity={opacity * 0.7} side={THREE.DoubleSide} />
                 </mesh>
             </group>
-            <mesh>
+            <mesh ref={coreRef}>
                 <icosahedronGeometry args={[0.08, 1]} />
                 <meshBasicMaterial color="#00ffff" transparent opacity={opacity * 0.4} wireframe />
             </mesh>

@@ -21,6 +21,28 @@ export default function CyberpunkOverlay() {
     const [calloutPhase, setCalloutPhase] = useState<'entering' | 'visible' | 'exiting' | 'hidden'>('hidden')
     const [vibeTextVisible, setVibeTextVisible] = useState(false)
     const [vibeText, setVibeText] = useState('')
+    // Intro narrative layers (liquid phase)
+    const [showIntroBrand, setShowIntroBrand] = useState(true)
+    const [showIntroPhilosophy, setShowIntroPhilosophy] = useState(false)
+    const [showIntroPrompt, setShowIntroPrompt] = useState(true)
+    // Rotating slogans carousel
+    const [sloganIndex, setSloganIndex] = useState(0)
+    const slogans = [
+        'Flow with Possibility',
+        'Consciousness in Motion',
+        'Fluidity is Freedom',
+        'Where Thoughts Take Shape',
+        'Let It Flow'
+    ]
+
+    // Rotate slogans every 2.5s while brand is visible
+    useEffect(() => {
+        if (!showIntroBrand) return
+        const interval = setInterval(() => {
+            setSloganIndex(prev => (prev + 1) % slogans.length)
+        }, 2500)
+        return () => clearInterval(interval)
+    }, [showIntroBrand, slogans.length])
 
     useMotionValueEvent(springProgress, "change", (latest) => {
         const rawProgress = (latest * 1000) / totalPageHeightVh
@@ -120,6 +142,16 @@ export default function CyberpunkOverlay() {
         else {
             setVibeTextVisible(false)
         }
+
+        // ===== INTRO NARRATIVE: Layered text during liquid phase =====
+        // Layer 1: Brand (visible at start, fades out early)
+        setShowIntroBrand(latest < 0.6)
+
+        // Layer 2: Philosophy (fades in after brand fades, holds, then fades out)
+        setShowIntroPhilosophy(latest >= 0.8 && latest < 1.8)
+
+        // Layer 3: Scroll prompt (visible at start, fades out as user scrolls)
+        setShowIntroPrompt(latest < 0.8)
     })
 
     const handleInitialize = () => {
@@ -129,6 +161,84 @@ export default function CyberpunkOverlay() {
     }
     return (
         <>
+            {/* 0. Intro Narrative Layer - Liquid Phase (consciousness flowing) */}
+            <div className="fixed inset-0 z-[100] flex items-center justify-start pl-12 md:pl-24 pointer-events-none">
+                <AnimatePresence mode="wait">
+                    {/* Layer 1: Brand Name */}
+                    {showIntroBrand && (
+                        <motion.div
+                            key="intro-brand"
+                            initial={{ opacity: 0, scale: 0.95 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            exit={{ opacity: 0, y: -20 }}
+                            transition={{ duration: 0.8, ease: "easeOut" }}
+                            className="absolute flex flex-col items-center gap-2"
+                        >
+                            <span className="text-gray-500/80 text-4xl md:text-6xl font-light tracking-[0.5em] uppercase">
+                                FLUID
+                            </span>
+                            {/* Rotating slogan */}
+                            <AnimatePresence mode="wait">
+                                <motion.span
+                                    key={sloganIndex}
+                                    initial={{ opacity: 0, y: 10 }}
+                                    animate={{ opacity: 1, y: 0 }}
+                                    exit={{ opacity: 0, y: -10 }}
+                                    transition={{ duration: 0.5 }}
+                                    className="text-gray-500/50 text-xs md:text-sm font-light tracking-[0.3em] uppercase italic"
+                                >
+                                    {slogans[sloganIndex]}
+                                </motion.span>
+                            </AnimatePresence>
+                        </motion.div>
+                    )}
+
+                    {/* Layer 2: Philosophy */}
+                    {showIntroPhilosophy && (
+                        <motion.div
+                            key="intro-philosophy"
+                            initial={{ opacity: 0, y: 20 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            exit={{ opacity: 0, y: -20 }}
+                            transition={{ duration: 1, ease: "easeOut" }}
+                            className="absolute text-center"
+                        >
+                            <span className="text-gray-700/60 text-lg md:text-2xl font-light tracking-[0.4em] uppercase italic">
+                                Where Thoughts Take Shape
+                            </span>
+                        </motion.div>
+                    )}
+                </AnimatePresence>
+
+                {/* Layer 3: Scroll Prompt (separate from AnimatePresence for overlay) */}
+                <AnimatePresence>
+                    {showIntroPrompt && (
+                        <motion.div
+                            key="intro-prompt"
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                            transition={{ duration: 0.5 }}
+                            className="absolute bottom-16 flex flex-col items-center gap-4"
+                        >
+                            {/* Mouse interaction hint */}
+                            <span className="text-gray-500/60 text-xs tracking-[0.2em] uppercase">
+                                Move to Flow
+                            </span>
+                            {/* Scroll hint */}
+                            <span className="text-gray-600/50 text-xs tracking-[0.3em] uppercase animate-pulse">
+                                Scroll to Feel
+                            </span>
+                            <motion.div
+                                animate={{ y: [0, 8, 0] }}
+                                transition={{ duration: 1.5, repeat: Infinity, ease: "easeInOut" }}
+                                className="w-[1px] h-8 bg-gradient-to-b from-gray-500/40 to-transparent"
+                            />
+                        </motion.div>
+                    )}
+                </AnimatePresence>
+            </div>
+
             {/* 1. Black Background Layer -> CHANGED to Transparent Pattern Layer */}
             {/* We let FluidBackground handle the black color fade. Here we just overlay patterns. */}
             <div

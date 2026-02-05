@@ -8,6 +8,7 @@ import { motion, useMotionValueEvent, AnimatePresence } from 'framer-motion'
 import { Zap, Power } from 'lucide-react'
 import CyberpunkGridCanvas from './CyberpunkGridCanvas'
 import FeatureCallout from './FeatureCallout'
+import FinalLanding from './FinalLanding'
 import { getCalloutVisibility, type FeaturePoint } from '@/config/featureConfig'
 
 export default function CyberpunkOverlay() {
@@ -25,6 +26,9 @@ export default function CyberpunkOverlay() {
     const [showIntroBrand, setShowIntroBrand] = useState(true)
     const [showIntroPhilosophy, setShowIntroPhilosophy] = useState(false)
     const [showIntroPrompt, setShowIntroPrompt] = useState(true)
+    // Final landing page (two phases)
+    const [showFinalPrompt, setShowFinalPrompt] = useState(false)  // Phase 1: Prompt during projection
+    const [showFinalCard, setShowFinalCard] = useState(false)      // Phase 2: Card after scroll
     // Rotating slogans carousel
     const [sloganIndex, setSloganIndex] = useState(0)
     const slogans = [
@@ -152,6 +156,14 @@ export default function CyberpunkOverlay() {
 
         // Layer 3: Scroll prompt (visible at start, fades out as user scrolls)
         setShowIntroPrompt(latest < 0.8)
+
+        // ===== FINAL LANDING: Two phases =====
+        // Phase 1: Show prompt during late holographicProjection (after carousel cycles)
+        // holographicProjection is ~32-35 scrollValue, show prompt near end
+        setShowFinalPrompt(currentStage === 'holographicProjection' && latest >= 34.0)
+
+        // Phase 2: Show card when user enters finalLanding stage
+        setShowFinalCard(currentStage === 'finalLanding')
     })
 
     const handleInitialize = () => {
@@ -399,6 +411,9 @@ export default function CyberpunkOverlay() {
                     />
                 )}
             </AnimatePresence>
+
+            {/* Final Landing Page */}
+            <FinalLanding showPrompt={showFinalPrompt} showCard={showFinalCard} />
         </>
     )
 }

@@ -250,8 +250,39 @@ export default function GlassWaterDrop() {
             // ===== PHASE 5: Holographic Projection (VR faces up) =====
             const holoPhaseStart = 32.0
             const holoPhaseEnd = 33.0  // 1秒過渡到朝上姿態
+            // ===== PHASE 6: Final Landing (VR returns to center-right) =====
+            const finalLandingStart = 35.0  // After holographic projection
+            const finalLandingEnd = 36.0
 
-            if (scrollValue > holoPhaseStart) {
+            if (scrollValue > finalLandingStart) {
+                // VR moves to center-right, faces front for product showcase
+                const landingProgress = Math.min(Math.max((scrollValue - finalLandingStart) / (finalLandingEnd - finalLandingStart), 0), 1)
+                const t = landingProgress * landingProgress * (3 - 2 * landingProgress) // smoothstep
+
+                // VR 位置：從朝上投影位置 → 右側（佔據右側版面70%）
+                // 起點：holoPhase 結束時 posX=0, posY=-0.25, scale=0.2
+                // 終點：右側居中，適中尺寸展示
+                posX = 0.35 * t  // 移到右側（往中間靠一點）
+
+                // 漂浮效果：到達最終位置後加入 sine 波動
+                const time = performance.now() * 0.001  // 轉換成秒
+                const floatOffset = t > 0.9 ? Math.sin(time * 1.5) * 0.015 : 0  // 輕微上下浮動
+                posY = -0.25 + (0.25 * t) + floatOffset
+
+                scale = 0.2 + (0.7 * t)  // 從 0.2 放大到 0.9（縮小一點）
+
+                // VR 轉回正面，但微微朝內（往左轉一點）
+                rotX = -Math.PI / 2 * (1 - t)
+                rotY = -0.2 * t  // 微微往內轉（負值 = 往左/朝向中央）
+                rotZ = 0
+
+                // Reset flip progress
+                setVrFlipProgress(1 - t)
+
+                // Hide lock effect
+                setLockEffectVisible(false)
+
+            } else if (scrollValue > holoPhaseStart) {
                 // VR 翻轉朝上，作為投影儀
                 const holoProgress = Math.min(Math.max((scrollValue - holoPhaseStart) / (holoPhaseEnd - holoPhaseStart), 0), 1)
                 const t = holoProgress * holoProgress * (3 - 2 * holoProgress) // smoothstep
@@ -602,7 +633,21 @@ export default function GlassWaterDrop() {
         // ===== 全息投影 (scrollValue 32.0+ 之後，VR 朝上投射) =====
         const holoStart = 32.0
         const holoFadeEnd = 32.5
-        if (scrollValue >= holoStart && meshRef.current?.visible) {
+        const holoFadeOutStart = 35.0  // Start fading out when entering finalLanding
+        const holoFadeOutEnd = 35.5
+
+        if (scrollValue >= holoFadeOutStart && meshRef.current?.visible) {
+            // Fade out projection during finalLanding
+            setHoloVisible(true)
+            const fadeOutProgress = Math.min((scrollValue - holoFadeOutStart) / (holoFadeOutEnd - holoFadeOutStart), 1)
+            setHoloOpacity(1 - fadeOutProgress)
+
+            // Hide completely after fade out
+            if (fadeOutProgress >= 1) {
+                setHoloVisible(false)
+                setHoloOpacity(0)
+            }
+        } else if (scrollValue >= holoStart && meshRef.current?.visible) {
             setHoloVisible(true)
             const hOpacity = Math.min((scrollValue - holoStart) / (holoFadeEnd - holoStart), 1)
             setHoloOpacity(hOpacity)

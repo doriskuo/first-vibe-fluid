@@ -11,7 +11,7 @@ export default function VisualParticles() {
     const dummy = useMemo(() => new THREE.Object3D(), [])
 
     // Config
-    const particleCount = 15000
+    const particleCount = 60000
     const startVh = 8.0
     const endVh = 22.0
 
@@ -143,11 +143,46 @@ export default function VisualParticles() {
         const tunnelPhase = Math.max(0, (portalProgress - 0.1) / 0.9)  // 10% 開始隧道 (原本 30%)
 
         // SPEED & SURGE - Boosted for speed
-        const surge = Math.pow(portalProgress, 1.5) * 15.0 // Increased from 3.0 to 15.0 for very high speed
-        const flowSpeed = time * 0.2 + surge
+        const velocity = Math.abs(springProgress.getVelocity())
+        const speedBoost = velocity * 2.0 // Dynamic boost based on how fast user scrolls
+
+        const surge = Math.pow(portalProgress, 1.5) * 80.0 // Increased from 50.0 to 80.0
+        const flowSpeed = time * 0.2 + surge + speedBoost
 
         if (meshRef.current) {
             const upVec = new THREE.Vector3(0, 1, 0)
+
+            // 2. PRE-CALCULATE TUNNEL CURVE (Once per frame)
+            let tunnelCurve: THREE.CatmullRomCurve3 | null = null
+            let tunnelLength = 250
+
+            if (portalProgress > 0) {
+                const bendPhase = flowSpeed * 0.5
+                const bendAmplitude = 50
+
+                const dynamicPoints = [
+                    new THREE.Vector3(0, 0, 0),             // Start
+                    new THREE.Vector3(0, 0, -50),           // Straight
+                    new THREE.Vector3(0, 0, -100),          // Still Straight (Deep)
+                    new THREE.Vector3(0, 0, -120),          // Still Straight (Very Deep)
+                    new THREE.Vector3(
+                        Math.sin(bendPhase * 1.0) * bendAmplitude * 0.5,
+                        Math.cos(bendPhase * 0.7) * bendAmplitude * 0.3,
+                        -150                                // First bend starts here (Deep)
+                    ),
+                    new THREE.Vector3(
+                        Math.sin(bendPhase * 1.2 + 1.0) * bendAmplitude,
+                        Math.cos(bendPhase * 0.9 + 0.5) * bendAmplitude * 0.7,
+                        -200                                // Full bend
+                    ),
+                    new THREE.Vector3(
+                        Math.sin(bendPhase * 0.8 + 2.0) * bendAmplitude * 0.6,
+                        Math.cos(bendPhase * 0.6 + 1.0) * bendAmplitude * 0.4,
+                        -250                                // Far end
+                    ),
+                ]
+                tunnelCurve = new THREE.CatmullRomCurve3(dynamicPoints, false, 'catmullrom', 0.5)
+            }
 
             for (let i = 0; i < particleCount; i++) {
                 // 1. BASE STATE
@@ -168,45 +203,15 @@ export default function VisualParticles() {
                 let curZ = rz + (tz + driftZ - rz) * easeCrystal
 
                 // 2. TUNNEL TRANSFORMATION
-                if (portalProgress > 0) {
+                if (tunnelCurve && portalProgress > 0) {
                     const ringStartU = tunnelData[i * 3]
                     const ringAngle = tunnelData[i * 3 + 1]
                     const radiusScale = tunnelData[i * 3 + 2]
 
-                    // === SIMPLER FLOW: CURVE FLOWS TOWARD CAMERA ===
-                    // The curve shape is fixed, it flows toward the camera as a whole
-                    // Particles are fixed to their position on the curve
-
-                    const bendPhase = flowSpeed * 0.5  // Controls curve shape change over time
-                    const bendAmplitude = 50
-
-                    // Create the curve shape - more centered zone at front
-                    const dynamicPoints = [
-                        new THREE.Vector3(0, 0, 0),           // At camera: centered
-                        new THREE.Vector3(0, 0, -30),         // Still centered
-                        new THREE.Vector3(0, 0, -60),         // Still centered (extended)
-                        new THREE.Vector3(
-                            Math.sin(bendPhase * 1.0) * bendAmplitude * 0.5,
-                            Math.cos(bendPhase * 0.7) * bendAmplitude * 0.3,
-                            -90                               // First bend starts here
-                        ),
-                        new THREE.Vector3(
-                            Math.sin(bendPhase * 1.2 + 1.0) * bendAmplitude,
-                            Math.cos(bendPhase * 0.9 + 0.5) * bendAmplitude * 0.7,
-                            -130                              // Full bend
-                        ),
-                        new THREE.Vector3(
-                            Math.sin(bendPhase * 0.8 + 2.0) * bendAmplitude * 0.6,
-                            Math.cos(bendPhase * 0.6 + 1.0) * bendAmplitude * 0.4,
-                            -180                              // Far end
-                        ),
-                    ]
-
-                    const tunnelCurve = new THREE.CatmullRomCurve3(dynamicPoints, false, 'catmullrom', 0.5)
+                    // Curve is already created outside loop
 
                     // Each ring has a fixed position in the curve (0 to 1)
                     // The "flow" is achieved by shifting this position toward camera over time
-                    const tunnelLength = 150  // Z depth of tunnel
                     const flowOffset = (flowSpeed * 30) % tunnelLength  // How much the curve has flowed
 
                     // Ring's world Z position (flows toward camera)
@@ -296,8 +301,8 @@ export default function VisualParticles() {
                 if (portalProgress > 0) {
                     if (curZ > 4) pOpacity = 0
                     else if (curZ > 0) pOpacity = (4 - curZ) / 4.0
-                    // More aggressive fade: z=-40 to z=-100
-                    if (curZ < -40) pOpacity *= Math.max(0, (curZ + 100) / 60)
+                    // More aggressive fade: z=-150 to z=-240
+                    if (curZ < -150) pOpacity *= Math.max(0, (curZ + 240) / 90)
                 }
 
                 // Apply VR return fade

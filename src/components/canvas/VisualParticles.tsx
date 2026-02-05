@@ -144,9 +144,9 @@ export default function VisualParticles() {
 
         // SPEED & SURGE - Boosted for speed
         const velocity = Math.abs(springProgress.getVelocity())
-        const speedBoost = velocity * 2.0 // Dynamic boost based on how fast user scrolls
+        const speedBoost = velocity * 4.0 // Dynamic boost based on how fast user scrolls
 
-        const surge = Math.pow(portalProgress, 1.5) * 80.0 // Increased from 50.0 to 80.0
+        const surge = Math.pow(portalProgress, 1.5) * 100.0 // Increased from 80.0 to 100.0
         const flowSpeed = time * 0.2 + surge + speedBoost
 
         if (meshRef.current) {
@@ -154,7 +154,7 @@ export default function VisualParticles() {
 
             // 2. PRE-CALCULATE TUNNEL CURVE (Once per frame)
             let tunnelCurve: THREE.CatmullRomCurve3 | null = null
-            let tunnelLength = 250
+            let tunnelLength = 200
 
             if (portalProgress > 0) {
                 const bendPhase = flowSpeed * 0.5
@@ -163,22 +163,21 @@ export default function VisualParticles() {
                 const dynamicPoints = [
                     new THREE.Vector3(0, 0, 0),             // Start
                     new THREE.Vector3(0, 0, -50),           // Straight
-                    new THREE.Vector3(0, 0, -100),          // Still Straight (Deep)
-                    new THREE.Vector3(0, 0, -120),          // Still Straight (Very Deep)
+                    new THREE.Vector3(0, 0, -80),           // Straight (Shortened)
                     new THREE.Vector3(
                         Math.sin(bendPhase * 1.0) * bendAmplitude * 0.5,
                         Math.cos(bendPhase * 0.7) * bendAmplitude * 0.3,
-                        -150                                // First bend starts here (Deep)
+                        -100                                // First bend starts here (Earlier: -150 -> -100)
                     ),
                     new THREE.Vector3(
                         Math.sin(bendPhase * 1.2 + 1.0) * bendAmplitude,
                         Math.cos(bendPhase * 0.9 + 0.5) * bendAmplitude * 0.7,
-                        -200                                // Full bend
+                        -150                                // Full bend
                     ),
                     new THREE.Vector3(
                         Math.sin(bendPhase * 0.8 + 2.0) * bendAmplitude * 0.6,
                         Math.cos(bendPhase * 0.6 + 1.0) * bendAmplitude * 0.4,
-                        -250                                // Far end
+                        -200                                // Far end
                     ),
                 ]
                 tunnelCurve = new THREE.CatmullRomCurve3(dynamicPoints, false, 'catmullrom', 0.5)
@@ -301,8 +300,8 @@ export default function VisualParticles() {
                 if (portalProgress > 0) {
                     if (curZ > 4) pOpacity = 0
                     else if (curZ > 0) pOpacity = (4 - curZ) / 4.0
-                    // More aggressive fade: z=-150 to z=-240
-                    if (curZ < -150) pOpacity *= Math.max(0, (curZ + 240) / 90)
+                    // More aggressive fade: z=-100 to z=-180
+                    if (curZ < -100) pOpacity *= Math.max(0, (curZ + 180) / 80)
                 }
 
                 // Apply VR return fade

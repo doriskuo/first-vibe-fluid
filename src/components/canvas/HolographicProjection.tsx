@@ -341,6 +341,7 @@ function WaveformPanel({ opacity }: { opacity: number }) {
 
     return (
         <group>
+            {/* @ts-ignore */}
             <line ref={lineRef} geometry={geometry}>
                 <lineBasicMaterial color="#ff00ff" transparent opacity={opacity} />
             </line>

@@ -499,7 +499,7 @@ function LightBeam({ opacity = 1, height = 0.25 }: { opacity?: number, height?: 
     const beamMaterial = useMemo(() => {
         return new THREE.ShaderMaterial({
             uniforms: {
-                uColor: { value: new THREE.Color("#00aaff") }, // 參考圖的藍色
+                uColor: { value: new THREE.Color("#88ccff") }, // Lighter blue
                 uOpacity: { value: safeOpacity },
                 uTime: { value: 0 }
             },
@@ -645,13 +645,7 @@ export default function HolographicProjection({
             </group>
 
             <group position={[0, 0.28, 0]} scale={[0.85, 0.85, 0.85]}>
-                <group position={[0, 0, -0.05]}>
-                    <mesh>
-                        <planeGeometry args={[0.7, 0.55]} />
-                        <meshBasicMaterial color="#000810" transparent opacity={beamProgress * opacity * 0.3} side={THREE.DoubleSide} />
-                    </mesh>
-                    <gridHelper args={[0.7, 8, '#002a4d', '#001a33']} rotation={[Math.PI / 2, 0, 0]} position={[0, 0, 0.01]} />
-                </group>
+                {/* Background removed as requested */}
 
                 <group position={[0, 0, 0.02]}>
                     {currentPattern === 0 && <PatternHex opacity={contentOpacity * opacity} />}

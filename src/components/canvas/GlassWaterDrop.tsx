@@ -187,17 +187,18 @@ export default function GlassWaterDrop() {
             const descentEnd = 6.2 // 1000vh duration
 
             // ===== Phase 4: Return to Center (after portal) =====
-            // portal ends at scrollValue ~49.0
-            const returnStart = 49.0
-            const returnEnd = 50.0   // 1000vh for return animation
+            // ===== Phase 4: Return to Center (after portal) =====
+            // portal ends at scrollValue ~25.0 (updated)
+            const returnStart = 25.0
+            const returnEnd = 26.0   // 1000vh for return animation
 
             // ===== Phase 4: Center Lock (VR settles at center with subtle effect) =====
-            const lockStart = 50.0
-            const lockEnd = 51.0    // 1000vh pause with settling effect (extended for more pause)
+            const lockStart = 26.0
+            const lockEnd = 27.0    // 1000vh pause with settling effect
 
             // ===== Phase 4: Feature Showcase (after lock) =====
-            const showcaseStart = 51.0
-            const showcaseEnd = 56.0  // 5000vh for rotation showcase
+            const showcaseStart = 27.0
+            const showcaseEnd = 32.0  // 5000vh for rotation showcase
 
             // Default State
             let scale = 1.0
@@ -208,8 +209,8 @@ export default function GlassWaterDrop() {
             let rotX = 0  // 新增 X 軸旋轉用於 VR 朝上
 
             // ===== PHASE 5: Holographic Projection (VR faces up) =====
-            const holoPhaseStart = 56.0
-            const holoPhaseEnd = 57.0  // 1秒過渡到朝上姿態
+            const holoPhaseStart = 32.0
+            const holoPhaseEnd = 33.0  // 1秒過渡到朝上姿態
 
             if (scrollValue > holoPhaseStart) {
                 // VR 翻轉朝上，作為投影儀
@@ -559,9 +560,9 @@ export default function GlassWaterDrop() {
             setCircuitGrowth(0)
         }
 
-        // ===== 全息投影 (scrollValue 56.0+ 之後，VR 朝上投射) =====
-        const holoStart = 56.0
-        const holoFadeEnd = 56.5
+        // ===== 全息投影 (scrollValue 32.0+ 之後，VR 朝上投射) =====
+        const holoStart = 32.0
+        const holoFadeEnd = 32.5
         if (scrollValue >= holoStart && meshRef.current?.visible) {
             setHoloVisible(true)
             const hOpacity = Math.min((scrollValue - holoStart) / (holoFadeEnd - holoStart), 1)

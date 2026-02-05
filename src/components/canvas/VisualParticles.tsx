@@ -19,7 +19,7 @@ export default function VisualParticles() {
     const crystallizeEnd = 8.5
 
     const portalStart = 8.9
-    const portalEnd = 49.0    // Matches new scrollValue max (48.9)
+    const portalEnd = 25.0    // Shortened to 25.0 per user request
 
     const { springProgress } = useScrollAnimation()
 
@@ -109,6 +109,10 @@ export default function VisualParticles() {
         return arr
     }, [])
 
+    const dummyVec1 = useMemo(() => new THREE.Vector3(), [])
+    const dummyVec2 = useMemo(() => new THREE.Vector3(), [])
+    const upVec = useMemo(() => new THREE.Vector3(0, 1, 0), [])
+
     useFrame((state) => {
         const scrollValue = springProgress.get()
         const time = state.clock.elapsedTime
@@ -137,50 +141,64 @@ export default function VisualParticles() {
             portalProgress = Math.min(Math.max((scrollValue - portalStart) / (portalEnd - portalStart), 0), 1)
         }
 
-        // gatherPhase: 收縮聚攏 (加速版 - 0%~10% 進度即完成)
-        // tunnelPhase: 隧道形成 (10% 開始)
-        const gatherPhase = Math.min(portalProgress * 10, 1.0)   // 10% 進度內完成聚攏 (原本 30%)
-        const tunnelPhase = Math.max(0, (portalProgress - 0.1) / 0.9)  // 10% 開始隧道 (原本 30%)
+        // gatherPhase: 收縮聚攏 (極速版 - 0%~2% 進度即完成)
+        // tunnelPhase: 隧道形成 (2% 開始，20% 完成延伸)
+        const gatherThreshold = 0.02
+        const tunnelCompletionThreshold = 0.2 // Tunnel is fully extended by 20% scroll
+        const gatherPhase = Math.min(portalProgress * (1 / gatherThreshold), 1.0)
+
+        // Normalize tunnel extension from 0 to 1 between gatherThreshold and tunnelCompletionThreshold
+        const tunnelPhase = Math.min(Math.max((portalProgress - gatherThreshold) / (tunnelCompletionThreshold - gatherThreshold), 0), 1.0)
 
         // SPEED & SURGE - Boosted for speed
         const velocity = Math.abs(springProgress.getVelocity())
-        const speedBoost = velocity * 4.0 // Dynamic boost based on how fast user scrolls
+        const speedBoost = velocity * 6.0 // Dynamic boost based on how fast user scrolls
 
-        const surge = Math.pow(portalProgress, 1.5) * 100.0 // Increased from 80.0 to 100.0
+        const surge = Math.pow(portalProgress, 1.5) * 120.0 // Increased from 100.0 to 120.0
         const flowSpeed = time * 0.2 + surge + speedBoost
 
         if (meshRef.current) {
-            const upVec = new THREE.Vector3(0, 1, 0)
-
             // 2. PRE-CALCULATE TUNNEL CURVE (Once per frame)
             let tunnelCurve: THREE.CatmullRomCurve3 | null = null
-            let tunnelLength = 200
+            let tunnelLength = 150
+
+            // Curve Lookup Tables (LUT)
+            const lutResolution = 500
+            let lutPoints: THREE.Vector3[] = []
+            let lutTangents: THREE.Vector3[] = []
 
             if (portalProgress > 0) {
                 const bendPhase = flowSpeed * 0.5
-                const bendAmplitude = 50
+                const bendAmplitude = 25 // Reduced from 50 to 25 to prevent sharp turns
 
                 const dynamicPoints = [
                     new THREE.Vector3(0, 0, 0),             // Start
-                    new THREE.Vector3(0, 0, -50),           // Straight
-                    new THREE.Vector3(0, 0, -80),           // Straight (Shortened)
+                    new THREE.Vector3(0, 0, -30),           // Straight (Short)
+                    new THREE.Vector3(0, 0, -60),           // Straight (Short)
                     new THREE.Vector3(
                         Math.sin(bendPhase * 1.0) * bendAmplitude * 0.5,
                         Math.cos(bendPhase * 0.7) * bendAmplitude * 0.3,
-                        -100                                // First bend starts here (Earlier: -150 -> -100)
+                        -80                                 // Bend Start
                     ),
                     new THREE.Vector3(
                         Math.sin(bendPhase * 1.2 + 1.0) * bendAmplitude,
                         Math.cos(bendPhase * 0.9 + 0.5) * bendAmplitude * 0.7,
-                        -150                                // Full bend
+                        -120                                // Full Bend
                     ),
                     new THREE.Vector3(
                         Math.sin(bendPhase * 0.8 + 2.0) * bendAmplitude * 0.6,
                         Math.cos(bendPhase * 0.6 + 1.0) * bendAmplitude * 0.4,
-                        -200                                // Far end
+                        -150                                // Far End
                     ),
                 ]
                 tunnelCurve = new THREE.CatmullRomCurve3(dynamicPoints, false, 'catmullrom', 0.5)
+
+                // Generate LUT
+                for (let k = 0; k <= lutResolution; k++) {
+                    const u = k / lutResolution
+                    lutPoints.push(tunnelCurve.getPointAt(u))
+                    lutTangents.push(tunnelCurve.getTangentAt(u).normalize())
+                }
             }
 
             for (let i = 0; i < particleCount; i++) {
@@ -224,31 +242,57 @@ export default function VisualParticles() {
                     const depthRatio = Math.abs(wrappedZ) / tunnelLength  // 0 = at camera, 1 = far
                     const u = Math.min(Math.max(depthRatio, 0), 0.99)
 
-                    const point = tunnelCurve.getPointAt(u)
-                    const tangent = tunnelCurve.getTangentAt(u).normalize()
-                    let right = new THREE.Vector3().crossVectors(tangent, upVec).normalize()
+                    // LUT IMPLEMENTATION (Optimized)
+                    // Linear Interpolation for smoothness
+                    const floatIndex = u * lutResolution
+                    const indexLow = Math.floor(floatIndex)
+                    const indexHigh = Math.min(indexLow + 1, lutResolution)
+                    const alpha = floatIndex - indexLow
+
+                    const pLow = lutPoints[indexLow]
+                    const pHigh = lutPoints[indexHigh]
+                    const pointX = pLow.x * (1 - alpha) + pHigh.x * alpha
+                    const pointY = pLow.y * (1 - alpha) + pHigh.y * alpha
+                    // (Z is handled by wrappedZ)
+
+                    // Tangent - Nearest Neighbor is sufficient for orientation
+                    const tangentNN = lutTangents[indexLow]
+
+                    // Use shared vectors instead of new Vector3()
+                    // dummyVec1 -> Right
+                    let right = dummyVec1.crossVectors(tangentNN, upVec).normalize()
                     if (right.lengthSq() < 0.001) right.set(1, 0, 0)
-                    const correctedUp = new THREE.Vector3().crossVectors(right, tangent).normalize()
+                    const correctedUp = dummyVec2.crossVectors(right, tangentNN).normalize()
 
-                    const gX = Math.cos(ringAngle) * 2.0
-                    const gY = Math.sin(ringAngle) * 2.0
-                    const gZ = -8.0
+                    // Radius Animation: Start small (Contracted) -> Expand to Tunnel
+                    // 0.0 to 0.2 PortalProgress: "Gather" phase (Radius grows from 0.1 to 1.0)
+                    const expansion = Math.min(portalProgress * 5.0, 1.0)
+                    const contractionFactor = 0.5 + 0.5 * Math.pow(expansion, 2) // Non-linear pop
 
-                    let tRadius = 6.0 * radiusScale
+                    let tRadius = 6.0 * radiusScale * contractionFactor
                     tRadius += Math.sin(u * 15 - time * 2) * 0.3
                     tRadius += Math.sin(ringAngle * 3 + time * 1.5) * 0.2
 
-                    // Position: curve XY offset + ring shape
-                    const tX = point.x + right.x * Math.cos(ringAngle) * tRadius + correctedUp.x * Math.sin(ringAngle) * tRadius
-                    const tY = point.y + right.y * Math.cos(ringAngle) * tRadius + correctedUp.y * Math.sin(ringAngle) * tRadius
+                    // 1. PATTERN STATE (Flower/Mandala)
+                    const gX = Math.cos(ringAngle) * 2.0
+                    const gY = Math.sin(ringAngle) * 2.0
+                    const gZ = -8.0
+                    const patternRadius = 2.0 + Math.sin(ringAngle * 3 + time * 1.5) * 0.5
+
+                    // Calculated Tunnel Position (Always Moving in Z)
+                    // Use pointX, pointY (lerped) and right, correctedUp (from LUT tangent)
+                    const tX = pointX + right.x * Math.cos(ringAngle) * tRadius + correctedUp.x * Math.sin(ringAngle) * tRadius
+                    const tY = pointY + right.y * Math.cos(ringAngle) * tRadius + correctedUp.y * Math.sin(ringAngle) * tRadius
                     const tZ = wrappedZ
 
-                    if (portalProgress < 0.1) {
+                    // 3. SPLIT LOGIC (Gather -> Burst)
+                    if (portalProgress < gatherThreshold) {
+                        // Gather Phase: Lerp to static flower shape
                         curX = THREE.MathUtils.lerp(curX, gX, gatherPhase)
                         curY = THREE.MathUtils.lerp(curY, gY, gatherPhase)
                         curZ = THREE.MathUtils.lerp(curZ, gZ, gatherPhase)
                     } else {
-                        // burst 指數越小，隧道延伸越快 (原本 2.0，現在 0.7)
+                        // Burst Phase: Lerp from flower to tunnel
                         const burst = Math.pow(tunnelPhase, 0.7)
                         curX = THREE.MathUtils.lerp(gX, tX, burst)
                         curY = THREE.MathUtils.lerp(gY, tY, burst)
@@ -260,7 +304,7 @@ export default function VisualParticles() {
                     if (Math.random() > 0.8) scaleZ *= 1.5
                     dummy.scale.set(0.05, 0.05, 0.05 * scaleZ)
 
-                    dummy.lookAt(curX + tangent.x, curY + tangent.y, curZ + tangent.z)
+                    dummy.lookAt(curX + tangentNN.x, curY + tangentNN.y, curZ + tangentNN.z)
                 } else {
                     let s = 0.05
                     if (i < particleCount * 0.3) s = 0.08
@@ -268,31 +312,46 @@ export default function VisualParticles() {
                     dummy.rotation.set(0, 0, 0)
                 }
 
-                // 3. GALAXY EXIT - only in last 5% of scroll
+                // 3. GALAXY EXIT & AMBIENT FLOAT (Modified per user request)
+                // Trigger dispersal right at the end of tunnel
                 if (scrollValue > portalEnd - 0.5) {
                     const exitPhase = Math.min((scrollValue - (portalEnd - 0.5)) / 0.5, 1.0)
+                    // Initial dispersal (burst out)
                     const dispersal = 80.0 * Math.pow(exitPhase, 1.5)
 
+                    // Apply dispersal
                     curX += (Math.random() - 0.5) * dispersal
                     curY += (Math.random() - 0.5) * dispersal
                     curZ += (Math.random()) * dispersal * 0.5
                 }
 
-                // 4. VR RETURN TO CENTER - particles slow down and become subtle
-                // Keep atmosphere but don't steal focus from VR
-                const vrReturnStart = portalEnd  // 49.0
-                const vrReturnEnd = portalEnd + 1.5  // Transition over 1.5 units
-                let vrReturnFade = 1.0
+                // 4. AMBIENT PHASE (After Tunnel Ends) - Slow Floating & Reduced Density
+                let ambientAlpha = 0
+                if (scrollValue > portalEnd) {
+                    // Transition to ambient state over 1.0 scroll unit
+                    ambientAlpha = Math.min((scrollValue - portalEnd) / 1.0, 1.0)
+                    const easeAmbient = ambientAlpha * ambientAlpha * (3 - 2 * ambientAlpha)
 
-                if (scrollValue > vrReturnStart) {
-                    const fadeProgress = Math.min((scrollValue - vrReturnStart) / (vrReturnEnd - vrReturnStart), 1.0)
-                    // Fade to 30% opacity (not completely gone) - 保留氛圍感
-                    vrReturnFade = 1.0 - fadeProgress * 0.7  // 1.0 -> 0.3
+                    // 1. DENSITY REDUCTION: Hide 80% of particles
+                    // Keep only particles where index % 5 === 0
+                    if (i % 5 !== 0) {
+                        dummy.scale.multiplyScalar(1.0 - easeAmbient) // Shrink to zero
+                    } else {
+                        // 2. MOTION: Switch to slow drifting
+                        // Target position: Original random position + gentle drift
+                        const ambientX = rx + Math.sin(time * 0.3 + i) * 2.0
+                        const ambientY = ry + Math.cos(time * 0.2 + i) * 2.0
+                        const ambientZ = rz - 10 + Math.sin(time * 0.1 + i) * 2.0 // Keep them slightly behind
 
-                    // Slow down particle movement significantly
-                    const slowDown = 1.0 - fadeProgress * 0.9  // Almost stop but not completely
-                    curX *= slowDown
-                    curY *= slowDown
+                        // Lerp current position to ambient position
+                        curX = THREE.MathUtils.lerp(curX, ambientX, easeAmbient)
+                        curY = THREE.MathUtils.lerp(curY, ambientY, easeAmbient)
+                        curZ = THREE.MathUtils.lerp(curZ, ambientZ, easeAmbient)
+
+                        // 3. SCALE: Make them subtle dust
+                        // Scale down existing tunnel scale (0.05) to ambient size (0.02)
+                        // dummy.scale is applied at the end, so we modify pOpacity logic later or handle here
+                    }
                 }
 
                 // Opacity - fade distant particles to focus view inside tunnel
@@ -304,8 +363,12 @@ export default function VisualParticles() {
                     if (curZ < -100) pOpacity *= Math.max(0, (curZ + 180) / 80)
                 }
 
-                // Apply VR return fade
-                pOpacity *= vrReturnFade
+                // Apply Ambient Phase Opacity
+                if (scrollValue > portalEnd) {
+                    const ambientAlpha = Math.min((scrollValue - portalEnd) / 1.0, 1.0)
+                    // Fade total opacity to 0.5
+                    pOpacity *= (1.0 - ambientAlpha * 0.5)
+                }
 
                 dummy.position.set(curX, curY, curZ)
                 dummy.scale.multiplyScalar(pOpacity)

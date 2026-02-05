@@ -97,7 +97,7 @@ export const stages: ScrollStage[] = [
     },
     {
         name: 'portal',
-        durationVh: 40000, // Quadrupled for even longer tunnel experience
+        durationVh: 16000, // Reduced from 40000 to match shorter tunnel (49->25)
     },
     {
         name: 'returnToCenter',

@@ -5,6 +5,7 @@ import { useFrame } from '@react-three/fiber'
 import { MeshTransmissionMaterial, Environment } from '@react-three/drei'
 import * as THREE from 'three'
 import { useScrollAnimation } from '@/hooks/useScrollAnimation'
+import { useScrollContext } from '@/components/providers/LenisProvider'
 import WatchGear from './WatchGear'
 import VRHeadphones from './VRHeadphones'
 import VRScanEffect from './VRScanEffect'
@@ -48,10 +49,12 @@ export default function GlassWaterDrop() {
     const rightGear4Ref = useRef<THREE.Group>(null)
 
     const { getState } = useScrollAnimation()
+    const { shouldResetRotation, clearResetFlag } = useScrollContext()
 
     // 拖曳旋轉狀態 (X, Y, Z 三軸)
     const [isDragging, setIsDragging] = useState(false)
     const [rotation, setRotation] = useState({ x: 0, y: 0, z: 0 })
+    const [isResetting, setIsResetting] = useState(false) // Track if reset animation is in progress
     const lastPointer = useRef({ x: 0, y: 0 })
 
     // VR 耳罩狀態
@@ -80,6 +83,42 @@ export default function GlassWaterDrop() {
     const [holoVisible, setHoloVisible] = useState(false)
     const [holoOpacity, setHoloOpacity] = useState(0)
     const [vrFlipProgress, setVrFlipProgress] = useState(0)
+
+    // ===== Rotation Reset Animation =====
+    useEffect(() => {
+        if (shouldResetRotation && !isResetting) {
+            setIsResetting(true)
+
+            // Animate rotation back to origin over 500ms
+            const startRotation = { ...rotation }
+            const startTime = Date.now()
+            const duration = 500
+
+            const animate = () => {
+                const elapsed = Date.now() - startTime
+                const progress = Math.min(elapsed / duration, 1)
+
+                // Ease-out curve for smooth deceleration
+                const eased = 1 - Math.pow(1 - progress, 3)
+
+                setRotation({
+                    x: startRotation.x * (1 - eased),
+                    y: startRotation.y * (1 - eased),
+                    z: startRotation.z * (1 - eased)
+                })
+
+                if (progress < 1) {
+                    requestAnimationFrame(animate)
+                } else {
+                    setRotation({ x: 0, y: 0, z: 0 })
+                    setIsResetting(false)
+                    clearResetFlag()
+                }
+            }
+
+            requestAnimationFrame(animate)
+        }
+    }, [shouldResetRotation, isResetting, rotation, clearResetFlag])
 
     // VR 耳機形狀參數
     const vrParams = useMemo(() => ({

@@ -12,7 +12,7 @@ import { getCalloutVisibility, type FeaturePoint } from '@/config/featureConfig'
 
 export default function CyberpunkOverlay() {
     const { springProgress } = useScrollAnimation()
-    const { setLocked } = useScrollContext()
+    const { setLocked, resetRotation } = useScrollContext()
     const [isInitialized, setIsInitialized] = useState(false)
     const [bgOpacity, setBgOpacity] = useState(0)
     const [uiVisible, setUiVisible] = useState(false)
@@ -100,6 +100,7 @@ export default function CyberpunkOverlay() {
 
     const handleInitialize = () => {
         setIsInitialized(true)
+        resetRotation() // Reset VR rotation before unlocking
         setLocked(false)
     }
     return (
@@ -145,6 +146,34 @@ export default function CyberpunkOverlay() {
                         </div>
                     </div>
                 </div>
+
+                {/* Drag Hint UI - Bottom Center (Same position as SCROLL DOWN hint) */}
+                {!isInitialized && (
+                    <motion.div
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: 20 }}
+                        transition={{ duration: 0.5 }}
+                        className="absolute bottom-20 w-full flex flex-col items-center gap-2 pointer-events-none z-50"
+                    >
+                        <span className="text-[#00f3ff] font-bold text-xs tracking-[0.3em] uppercase animate-pulse">
+                            DRAG TO ROTATE
+                        </span>
+                        {/* Animated hand icon */}
+                        <motion.div
+                            animate={{ x: [0, 12, 0, -12, 0] }}
+                            transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
+                            className="text-[#00f3ff] opacity-60"
+                        >
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                                <path d="M18 11V6a2 2 0 0 0-2-2v0a2 2 0 0 0-2 2v0" />
+                                <path d="M14 10V4a2 2 0 0 0-2-2v0a2 2 0 0 0-2 2v2" />
+                                <path d="M10 10.5V6a2 2 0 0 0-2-2v0a2 2 0 0 0-2 2v8" />
+                                <path d="M18 8a2 2 0 1 1 4 0v6a8 8 0 0 1-8 8h-2c-2.8 0-4.5-.86-5.99-2.34l-3.6-3.6a2 2 0 0 1 2.83-2.82L7 15" />
+                            </svg>
+                        </motion.div>
+                    </motion.div>
+                )}
 
                 {/* Central Interaction Button - Moved to BOTTOM RIGHT */}
                 {!isInitialized && (

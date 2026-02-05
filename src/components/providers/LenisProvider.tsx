@@ -1,6 +1,6 @@
 'use client'
 
-import { createContext, useContext, useEffect, useRef, useState } from 'react'
+import { createContext, useContext, useEffect, useRef, useState, useCallback } from 'react'
 import Lenis from '@studio-freight/lenis'
 import gsap from 'gsap'
 import { ScrollTrigger } from 'gsap/ScrollTrigger'
@@ -14,12 +14,18 @@ interface ScrollContextType {
     lenis: Lenis | null
     isLocked: boolean
     setLocked: (locked: boolean) => void
+    shouldResetRotation: boolean
+    resetRotation: () => void
+    clearResetFlag: () => void
 }
 
 const ScrollContext = createContext<ScrollContextType>({
     lenis: null,
     isLocked: false,
     setLocked: () => { },
+    shouldResetRotation: false,
+    resetRotation: () => { },
+    clearResetFlag: () => { },
 })
 
 export const useScrollContext = () => useContext(ScrollContext)
@@ -36,6 +42,15 @@ export default function LenisProvider({
 }) {
     const lenisRef = useRef<Lenis | null>(null)
     const [isLocked, setIsLocked] = useState(false)
+    const [shouldResetRotation, setShouldResetRotation] = useState(false)
+
+    const resetRotation = useCallback(() => {
+        setShouldResetRotation(true)
+    }, [])
+
+    const clearResetFlag = useCallback(() => {
+        setShouldResetRotation(false)
+    }, [])
 
     useEffect(() => {
         // 初始化 Lenis
@@ -83,7 +98,14 @@ export default function LenisProvider({
     }, [isLocked])
 
     return (
-        <ScrollContext.Provider value={{ lenis: lenisRef.current, isLocked, setLocked: setIsLocked }}>
+        <ScrollContext.Provider value={{
+            lenis: lenisRef.current,
+            isLocked,
+            setLocked: setIsLocked,
+            shouldResetRotation,
+            resetRotation,
+            clearResetFlag
+        }}>
             {children}
         </ScrollContext.Provider>
     )

@@ -19,6 +19,8 @@ export default function CyberpunkOverlay() {
     const [activeFeature, setActiveFeature] = useState<FeaturePoint | null>(null)
     const [calloutVisible, setCalloutVisible] = useState(false)
     const [calloutPhase, setCalloutPhase] = useState<'entering' | 'visible' | 'exiting' | 'hidden'>('hidden')
+    const [vibeTextVisible, setVibeTextVisible] = useState(false)
+    const [vibeText, setVibeText] = useState('')
 
     useMotionValueEvent(springProgress, "change", (latest) => {
         const rawProgress = (latest * 1000) / totalPageHeightVh
@@ -95,6 +97,28 @@ export default function CyberpunkOverlay() {
             setActiveFeature(null)
             setCalloutVisible(false)
             setCalloutPhase('hidden')
+        }
+
+        // ===== VIBE TEXT: Show slogans with scroll-based timing =====
+        // Delayed entry - all slogans appear later as requested
+
+        // "Enjoy the Vibe" - audio waveforms phase
+        if (latest >= 6.5 && latest < 7.8) {
+            setVibeTextVisible(true)
+            setVibeText('Enjoy the Vibe')
+        }
+        // "Explore the Universe" - sphere phase
+        else if (latest >= 8.2 && latest < 8.9) {
+            setVibeTextVisible(true)
+            setVibeText('Explore the Universe')
+        }
+        // "Immerse Yourself" - tunnel phase
+        else if (latest >= 9.2 && currentStage === 'portal') {
+            setVibeTextVisible(true)
+            setVibeText('Immerse Yourself')
+        }
+        else {
+            setVibeTextVisible(false)
         }
     })
 
@@ -233,7 +257,24 @@ export default function CyberpunkOverlay() {
 
             </motion.div>
 
-            {/* 3. Feature Callout Layer - Only shown during featureMorph */}
+            {/* 3. Vibe Text Layer - Shown during audioSim/visualSim */}
+            <AnimatePresence>
+                {vibeTextVisible && (
+                    <motion.div
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -10 }}
+                        transition={{ duration: 0.8, ease: "easeOut" }}
+                        className="fixed bottom-16 w-full flex justify-center pointer-events-none z-50"
+                    >
+                        <span className="text-white/60 text-sm md:text-base font-light tracking-[0.4em] uppercase italic">
+                            {vibeText}
+                        </span>
+                    </motion.div>
+                )}
+            </AnimatePresence>
+
+            {/* 4. Feature Callout Layer - Only shown during featureMorph */}
             {/* AnimatePresence 需要在父層，用 key 來觸發進退場動畫 */}
             <AnimatePresence mode="wait">
                 {activeFeature && calloutVisible && calloutPhase !== 'hidden' && (

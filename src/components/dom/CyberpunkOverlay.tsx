@@ -9,6 +9,7 @@ import { Zap, Power } from 'lucide-react'
 import CyberpunkGridCanvas from './CyberpunkGridCanvas'
 import FeatureCallout from './FeatureCallout'
 import FinalLanding from './FinalLanding'
+import Navbar from './Navbar'
 import { getCalloutVisibility, type FeaturePoint } from '@/config/featureConfig'
 
 export default function CyberpunkOverlay() {
@@ -29,6 +30,9 @@ export default function CyberpunkOverlay() {
     // Final landing page (two phases)
     const [showFinalPrompt, setShowFinalPrompt] = useState(false)  // Phase 1: Prompt during projection
     const [showFinalCard, setShowFinalCard] = useState(false)      // Phase 2: Card after scroll
+    // Projection lock state
+    const [projectionLocked, setProjectionLocked] = useState(false)
+    const [projectionComplete, setProjectionComplete] = useState(false)
     // Rotating slogans carousel
     const [sloganIndex, setSloganIndex] = useState(0)
     const slogans = [
@@ -47,6 +51,23 @@ export default function CyberpunkOverlay() {
         }, 2500)
         return () => clearInterval(interval)
     }, [showIntroBrand, slogans.length])
+
+    // 投影鎖定：進入 holographicProjection 階段時鎖住滾輪，5秒後解鎖顯示提示
+    useEffect(() => {
+        if (projectionLocked && !projectionComplete) {
+            // 鎖住滾輪
+            setLocked(true)
+
+            // 5秒後解鎖並顯示提示
+            const timer = setTimeout(() => {
+                setProjectionComplete(true)
+                setShowFinalPrompt(true)
+                setLocked(false)
+            }, 20000)  // 20秒投影時間
+
+            return () => clearTimeout(timer)
+        }
+    }, [projectionLocked, projectionComplete, setLocked])
 
     useMotionValueEvent(springProgress, "change", (latest) => {
         const rawProgress = (latest * 1000) / totalPageHeightVh
@@ -157,13 +178,28 @@ export default function CyberpunkOverlay() {
         // Layer 3: Scroll prompt (visible at start, fades out as user scrolls)
         setShowIntroPrompt(latest < 0.8)
 
-        // ===== FINAL LANDING: Two phases =====
-        // Phase 1: Show prompt during late holographicProjection (after carousel cycles)
-        // holographicProjection is ~32-35 scrollValue, show prompt near end
-        setShowFinalPrompt(currentStage === 'holographicProjection' && latest >= 34.0)
+        // ===== FINAL LANDING: Projection lock + prompt =====
+        // 當進入 holographicProjection 階段時觸發鎖定
+        // holographicProjection 階段是 319-349，在邊界 319 時觸發
+        if (currentStage === 'holographicProjection' && !projectionLocked && !projectionComplete) {
+            setProjectionLocked(true)
+        }
+
+        // 離開 holographicProjection 時重設狀態（為下次使用 navbar 跳轉做準備）
+        if (currentStage !== 'holographicProjection' && currentStage !== 'finalLanding') {
+            setProjectionLocked(false)
+            setProjectionComplete(false)
+            setShowFinalPrompt(false)
+        }
 
         // Phase 2: Show card when user enters finalLanding stage
-        setShowFinalCard(currentStage === 'finalLanding')
+        // 同時隱藏滾動提示
+        if (currentStage === 'finalLanding') {
+            setShowFinalPrompt(false)  // 繼續滾動後隱藏提示
+            setShowFinalCard(true)
+        } else {
+            setShowFinalCard(false)
+        }
     })
 
     const handleInitialize = () => {
@@ -173,6 +209,11 @@ export default function CyberpunkOverlay() {
     }
     return (
         <>
+            {/* Collapsible Navbar - visible in all stages except finalLanding (FinalLanding has its own) */}
+            {!showFinalCard && (
+                <Navbar autoExpand={false} />
+            )}
+
             {/* 0. Intro Narrative Layer - Liquid Phase (consciousness flowing) */}
             <div className="fixed inset-0 z-[100] flex items-center justify-start pl-12 md:pl-24 pointer-events-none">
                 <AnimatePresence mode="wait">

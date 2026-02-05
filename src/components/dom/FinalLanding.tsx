@@ -1,6 +1,7 @@
 'use client'
 
 import { motion, AnimatePresence } from 'framer-motion'
+import Navbar from './Navbar'
 
 interface FinalLandingProps {
     showPrompt: boolean  // Phase 1: Show scroll prompt during projection
@@ -10,6 +11,20 @@ interface FinalLandingProps {
 export default function FinalLanding({ showPrompt, showCard }: FinalLandingProps) {
     return (
         <>
+            {/* Navbar - only appears in final landing, always expanded */}
+            <AnimatePresence>
+                {showCard && (
+                    <motion.div
+                        initial={{ opacity: 0, y: -20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -20 }}
+                        transition={{ duration: 0.8, delay: 0.5 }}
+                    >
+                        <Navbar autoExpand={true} />
+                    </motion.div>
+                )}
+            </AnimatePresence>
+
             {/* Phase 1: Scroll Prompt (appears during projection) */}
             <AnimatePresence>
                 {showPrompt && (
@@ -57,11 +72,25 @@ export default function FinalLanding({ showPrompt, showCard }: FinalLandingProps
                             transition={{ duration: 0.8, delay: 0.3 }}
                             className="relative max-w-md pointer-events-auto"
                         >
-                            {/* Gradient glow background */}
-                            <div className="absolute -inset-1 bg-gradient-to-r from-[#ff00ff]/30 via-[#8b5cf6]/20 to-[#00f3ff]/30 rounded-lg blur-xl opacity-70" />
+                            {/* Outer glow - large diffuse */}
+                            <div className="absolute -inset-8 bg-gradient-to-r from-[#ff00ff]/40 via-[#8b5cf6]/30 to-[#00f3ff]/40 rounded-3xl blur-3xl opacity-60" />
 
-                            {/* Glass card */}
-                            <div className="relative bg-black/40 backdrop-blur-xl border border-white/10 rounded-lg p-8 shadow-2xl">
+                            {/* Inner glow - more focused */}
+                            <div className="absolute -inset-2 bg-gradient-to-br from-[#00f3ff]/25 via-[#8b5cf6]/20 to-[#ff00ff]/25 rounded-xl blur-xl opacity-80" />
+
+                            {/* Glass card - enhanced glassmorphism */}
+                            <div className="relative overflow-hidden rounded-lg p-6 shadow-2xl shadow-[#00f3ff]/10"
+                                style={{
+                                    background: 'linear-gradient(135deg, rgba(255,255,255,0.08) 0%, rgba(255,255,255,0.02) 50%, rgba(0,243,255,0.05) 100%)',
+                                    backdropFilter: 'blur(5px) saturate(1.5)',
+                                    WebkitBackdropFilter: 'blur(5px) saturate(1.5)',
+                                    border: '1px solid rgba(255,255,255,0.15)',
+                                    boxShadow: 'inset 0 1px 1px rgba(255,255,255,0.1), inset 0 -1px 1px rgba(0,0,0,0.1), 0 25px 50px -12px rgba(0,243,255,0.15)'
+                                }}
+                            >
+                                {/* Glass inner highlight (top edge reflection) */}
+                                <div className="absolute top-0 left-0 right-0 h-[40%] bg-gradient-to-b from-white/5 to-transparent pointer-events-none" />
+
                                 {/* Top accent line - gradient */}
                                 <div className="absolute top-0 left-4 right-4 h-[1px] bg-gradient-to-r from-[#ff00ff] via-[#8b5cf6] to-[#00f3ff]" />
 

@@ -21,19 +21,15 @@ export default function CustomCursor() {
 
         // 滑鼠移動追蹤
         const onMouseMove = (e: MouseEvent) => {
-            // 光暈：延遲跟隨（流動感）
+            // 光暈：稍微延遲跟隨（流動感）
             gsap.to(halo, {
                 x: e.clientX - 24,
                 y: e.clientY - 24,
-                duration: 0.6,
-                ease: 'power3.out',
+                duration: 0.15,
+                ease: 'power2.out',
             })
-            // 中心點：快速跟隨
-            gsap.to(dot, {
-                x: e.clientX - 4,
-                y: e.clientY - 4,
-                duration: 0.1,
-            })
+            // 中心點：完全即時跟隨
+            dot.style.transform = `translate(${e.clientX - 4}px, ${e.clientY - 4}px)`
         }
 
         // 滾動偵測

@@ -91,8 +91,8 @@ export default function CyberpunkOverlay() {
         }
 
         // Show Lock Screen UI - DELAYED (Wait for VR effects to finish)
-        // Previous: cyberpunkEntry > 0.8 (approx 4.3) -> Too early, missed rays(4.5) and particles(4.8)
-        // New: descent > 0.4 (approx 5.0) -> Allows full VR reveal
+        // Only trigger lock if user is actually IN descent stage (not jumping past it)
+        // Check: currentStage is descent AND not yet initialized AND not in later stages
         if (currentStage === 'descent' && !isInitialized) {
             const stage = scrollConfig.stages.find(s => s.name === 'descent')
             if (stage && stage.scroll) {
@@ -100,18 +100,19 @@ export default function CyberpunkOverlay() {
                 const stageProgress = (rawProgress - start) / (end - start)
 
                 // Trigger around scroll value 5.0 (descent starts at 4.4, length 1.5)
-                // 4.4 + 1.5 * 0.4 = 5.0
-                if (stageProgress > 0.4) {
+                // Only lock if we are within descent range (not jumping past)
+                if (stageProgress > 0.4 && stageProgress < 1.0) {
                     setUiVisible(true)
                     setLocked(true)
                 } else {
                     setUiVisible(false)
-                    setLocked(false)
+                    // Don't unlock here - let navbar or INITIALIZE handle it
                 }
             }
         } else {
             setUiVisible(false)
-            if (!isInitialized && currentStage !== 'cyberpunkEntry') {
+            // Only unlock if we've moved past descent naturally and haven't initialized
+            if (!isInitialized && currentStage !== 'cyberpunkEntry' && currentStage !== 'descent') {
                 setLocked(false)
             }
         }

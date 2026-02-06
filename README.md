@@ -1,5 +1,7 @@
 # 💧 FLUID_DYNAMIC ｜ Vibe Coding 互動式 3D 視覺體驗
 
+🔗 **[Live Demo](https://first-vibe-fluid-doriskuos-projects.vercel.app/)**
+
 An immersive **3D interactive web experience** built with Next.js, Three.js, and GSAP.  
 以 **Vibe Coding** 理念打造的沉浸式網頁體驗，  
 結合 **液態流體效果、VR 頭戴式裝置 3D 變形、賽博朋克 UI、全息投影** 等視覺元素，  

@@ -591,13 +591,15 @@ interface HolographicProjectionProps {
     opacity?: number
     vrRotation?: THREE.Euler
     vrFlipProgress?: number
+    onProjectionStart?: () => void  // 投影開始時的回調
 }
 
 export default function HolographicProjection({
     visible,
     opacity = 1,
     vrRotation,
-    vrFlipProgress = 1
+    vrFlipProgress = 1,
+    onProjectionStart
 }: HolographicProjectionProps) {
     const groupRef = useRef<THREE.Group>(null)
     const [currentPattern, setCurrentPattern] = useState(0) // 0=Hex, 1=Radar, 2=Sphere, 3=GlassGlobe, 4=FlatMap
@@ -605,6 +607,7 @@ export default function HolographicProjection({
     const [contentOpacity, setContentOpacity] = useState(0)
     const timerRef = useRef(0)
     const patternTimerRef = useRef(0)
+    const projectionStartedRef = useRef(false)  // 追蹤是否已經通知過
 
     const BEAM_IN_TIME = 0.5
     const PATTERN_DURATION = 3.5
@@ -615,8 +618,16 @@ export default function HolographicProjection({
             setBeamProgress(0)
             setContentOpacity(0)
             timerRef.current = 0
+            projectionStartedRef.current = false  // 重設
             return
         }
+
+        // 投影開始時通知父組件（只通知一次）
+        if (!projectionStartedRef.current && onProjectionStart) {
+            projectionStartedRef.current = true
+            onProjectionStart()
+        }
+
         timerRef.current += delta
         setBeamProgress(Math.min(timerRef.current / BEAM_IN_TIME, 1))
 

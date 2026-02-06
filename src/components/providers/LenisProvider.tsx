@@ -1,6 +1,6 @@
 'use client'
 
-import { createContext, useContext, useEffect, useRef, useState, useCallback } from 'react'
+import { createContext, useContext, useEffect, useState, useCallback } from 'react'
 import Lenis from '@studio-freight/lenis'
 import gsap from 'gsap'
 import { ScrollTrigger } from 'gsap/ScrollTrigger'
@@ -17,6 +17,10 @@ interface ScrollContextType {
     shouldResetRotation: boolean
     resetRotation: () => void
     clearResetFlag: () => void
+    // 投影狀態
+    projectionStarted: boolean
+    onProjectionStart: () => void
+    resetProjection: () => void
 }
 
 const ScrollContext = createContext<ScrollContextType>({
@@ -26,6 +30,9 @@ const ScrollContext = createContext<ScrollContextType>({
     shouldResetRotation: false,
     resetRotation: () => { },
     clearResetFlag: () => { },
+    projectionStarted: false,
+    onProjectionStart: () => { },
+    resetProjection: () => { },
 })
 
 export const useScrollContext = () => useContext(ScrollContext)
@@ -40,9 +47,10 @@ export default function LenisProvider({
 }: {
     children: React.ReactNode
 }) {
-    const lenisRef = useRef<Lenis | null>(null)
+    const [lenis, setLenisInstance] = useState<Lenis | null>(null)
     const [isLocked, setIsLocked] = useState(false)
     const [shouldResetRotation, setShouldResetRotation] = useState(false)
+    const [projectionStarted, setProjectionStarted] = useState(false)
 
     const resetRotation = useCallback(() => {
         setShouldResetRotation(true)
@@ -52,9 +60,17 @@ export default function LenisProvider({
         setShouldResetRotation(false)
     }, [])
 
+    const onProjectionStart = useCallback(() => {
+        setProjectionStarted(true)
+    }, [])
+
+    const resetProjection = useCallback(() => {
+        setProjectionStarted(false)
+    }, [])
+
     useEffect(() => {
         // 初始化 Lenis
-        const lenis = new Lenis({
+        const lenisInstance = new Lenis({
             duration: 1.2,           // 滾動動畫持續時間
             easing: (t) => Math.min(1, 1.001 - Math.pow(2, -10 * t)), // easeOutExpo
             orientation: 'vertical', // 垂直滾動
@@ -64,28 +80,27 @@ export default function LenisProvider({
             touchMultiplier: 2,      // 觸控速度倍數
         })
 
-        lenisRef.current = lenis
+        setLenisInstance(lenisInstance)
 
         // 連接 Lenis 和 GSAP ScrollTrigger
-        lenis.on('scroll', ScrollTrigger.update)
+        lenisInstance.on('scroll', ScrollTrigger.update)
 
         // 將 Lenis 加入 GSAP ticker
         gsap.ticker.add((time) => {
-            lenis.raf(time * 1000)
+            lenisInstance.raf(time * 1000)
         })
 
         // 設定 GSAP ticker 的 lagSmoothing
         gsap.ticker.lagSmoothing(0)
 
         return () => {
-            lenis.destroy()
-            lenisRef.current = null
+            lenisInstance.destroy()
+            setLenisInstance(null)
         }
     }, [])
 
     // 處理鎖定邏輯
     useEffect(() => {
-        const lenis = lenisRef.current
         if (!lenis) return
 
         if (isLocked) {
@@ -95,16 +110,19 @@ export default function LenisProvider({
             lenis.start()
             document.body.style.overflow = ''
         }
-    }, [isLocked])
+    }, [isLocked, lenis])
 
     return (
         <ScrollContext.Provider value={{
-            lenis: lenisRef.current,
+            lenis,
             isLocked,
             setLocked: setIsLocked,
             shouldResetRotation,
             resetRotation,
-            clearResetFlag
+            clearResetFlag,
+            projectionStarted,
+            onProjectionStart,
+            resetProjection
         }}>
             {children}
         </ScrollContext.Provider>

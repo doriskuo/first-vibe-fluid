@@ -6,13 +6,14 @@ import { useScrollContext } from '@/components/providers/LenisProvider'
 import { computedStages } from '@/config/scrollTimeline'
 
 // 定義要顯示在 navbar 的階段及其顯示名稱
+// 根據 scrollTimeline.ts 的階段順序對應
 const navLinks = [
-    { stage: 'liquid', label: 'Fluid', offsetVh: 0 },
-    { stage: 'shapeMorph', label: 'Transform', offsetVh: 0 },
-    { stage: 'descent', label: 'Descent', offsetVh: 0 },
-    { stage: 'portal', label: 'Tunnel', offsetVh: 0 },
-    { stage: 'featureShowcase', label: 'Features', offsetVh: 0 },
-    { stage: 'finalLanding', label: 'Product', offsetVh: 500 },
+    { stage: 'liquid', label: 'Fluid', offsetVh: 0 },           // 0-2: 液體流動
+    { stage: 'shapeMorph', label: 'Transform', offsetVh: 0 },   // 24-29: 形狀變形為VR
+    { stage: 'descent', label: 'Descent', offsetVh: 0 },        // 44-59: 粒子下降
+    { stage: 'portal', label: 'Tunnel', offsetVh: 0 },          // 89-249: 隧道穿越
+    { stage: 'featureShowcase', label: 'Features', offsetVh: 0 },// 269-319: 功能展示
+    { stage: 'finalLanding', label: 'Product', offsetVh: 0 },   // 349-369: 最終產品頁
 ]
 
 interface NavbarProps {
@@ -20,7 +21,7 @@ interface NavbarProps {
 }
 
 export default function Navbar({ autoExpand = false }: NavbarProps) {
-    const { lenis } = useScrollContext()
+    const { lenis, setLocked } = useScrollContext()
     const [isExpanded, setIsExpanded] = useState(autoExpand)
 
     useEffect(() => {
@@ -30,6 +31,9 @@ export default function Navbar({ autoExpand = false }: NavbarProps) {
     const scrollToStage = (stageName: string, offsetVh: number = 0) => {
         const stage = computedStages.find(s => s.name === stageName)
         if (!stage || !lenis) return
+
+        // 確保滾輪解鎖（防止在投影鎖定時無法導航）
+        setLocked(false)
 
         const targetScrollPx = ((stage.startVh + offsetVh) / 100) * window.innerHeight
 

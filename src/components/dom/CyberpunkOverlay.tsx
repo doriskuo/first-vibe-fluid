@@ -14,7 +14,7 @@ import { getCalloutVisibility, type FeaturePoint } from '@/config/featureConfig'
 
 export default function CyberpunkOverlay() {
     const { springProgress } = useScrollAnimation()
-    const { setLocked, resetRotation } = useScrollContext()
+    const { setLocked, resetRotation, projectionStarted, resetProjection } = useScrollContext()
     const [isInitialized, setIsInitialized] = useState(false)
     const [bgOpacity, setBgOpacity] = useState(0)
     const [uiVisible, setUiVisible] = useState(false)
@@ -30,8 +30,7 @@ export default function CyberpunkOverlay() {
     // Final landing page (two phases)
     const [showFinalPrompt, setShowFinalPrompt] = useState(false)  // Phase 1: Prompt during projection
     const [showFinalCard, setShowFinalCard] = useState(false)      // Phase 2: Card after scroll
-    // Projection lock state
-    const [projectionLocked, setProjectionLocked] = useState(false)
+    // Projection complete state (used to ensure timer only runs once)
     const [projectionComplete, setProjectionComplete] = useState(false)
     // Rotating slogans carousel
     const [sloganIndex, setSloganIndex] = useState(0)
@@ -52,13 +51,13 @@ export default function CyberpunkOverlay() {
         return () => clearInterval(interval)
     }, [showIntroBrand, slogans.length])
 
-    // 投影鎖定：進入 holographicProjection 階段時鎖住滾輪，5秒後解鎖顯示提示
+    // 投影鎖定：當投影真正開始時（從 HolographicProjection 觸發）鎖住滾輪，20秒後解鎖顯示提示
     useEffect(() => {
-        if (projectionLocked && !projectionComplete) {
+        if (projectionStarted && !projectionComplete) {
             // 鎖住滾輪
             setLocked(true)
 
-            // 5秒後解鎖並顯示提示
+            // 20秒後解鎖並顯示提示
             const timer = setTimeout(() => {
                 setProjectionComplete(true)
                 setShowFinalPrompt(true)
@@ -67,7 +66,7 @@ export default function CyberpunkOverlay() {
 
             return () => clearTimeout(timer)
         }
-    }, [projectionLocked, projectionComplete, setLocked])
+    }, [projectionStarted, projectionComplete, setLocked])
 
     useMotionValueEvent(springProgress, "change", (latest) => {
         const rawProgress = (latest * 1000) / totalPageHeightVh
@@ -178,16 +177,10 @@ export default function CyberpunkOverlay() {
         // Layer 3: Scroll prompt (visible at start, fades out as user scrolls)
         setShowIntroPrompt(latest < 0.8)
 
-        // ===== FINAL LANDING: Projection lock + prompt =====
-        // 當進入 holographicProjection 階段時觸發鎖定
-        // holographicProjection 階段是 319-349，在邊界 319 時觸發
-        if (currentStage === 'holographicProjection' && !projectionLocked && !projectionComplete) {
-            setProjectionLocked(true)
-        }
-
+        // ===== FINAL LANDING: Reset projection state when leaving =====
         // 離開 holographicProjection 時重設狀態（為下次使用 navbar 跳轉做準備）
         if (currentStage !== 'holographicProjection' && currentStage !== 'finalLanding') {
-            setProjectionLocked(false)
+            resetProjection()
             setProjectionComplete(false)
             setShowFinalPrompt(false)
         }

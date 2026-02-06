@@ -49,7 +49,7 @@ export default function GlassWaterDrop() {
     const rightGear4Ref = useRef<THREE.Group>(null)
 
     const { getState } = useScrollAnimation()
-    const { shouldResetRotation, clearResetFlag } = useScrollContext()
+    const { shouldResetRotation, clearResetFlag, onProjectionStart } = useScrollContext()
 
     // 拖曳旋轉狀態 (X, Y, Z 三軸)
     const [isDragging, setIsDragging] = useState(false)
@@ -975,6 +975,7 @@ export default function GlassWaterDrop() {
                 visible={holoVisible}
                 opacity={holoOpacity}
                 vrFlipProgress={vrFlipProgress}
+                onProjectionStart={onProjectionStart}
             />
         </>
     )

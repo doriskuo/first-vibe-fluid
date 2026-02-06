@@ -527,6 +527,9 @@ export default function GlassWaterDrop() {
                 // VR 階段隱藏賽博朋克光暈（讓齒輪更清晰）
                 if (morphT > 0.3) {
                     coreGroupRef.current.visible = false
+                } else {
+                    // 返回開頭時重新顯示
+                    coreGroupRef.current.visible = true
                 }
 
                 // 齒輪淡入動畫 (3.3 - 3.8)

@@ -2,7 +2,9 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import LenisProvider from "@/components/providers/LenisProvider";
+import AudioProvider from "@/components/providers/AudioProvider";
 import CustomCursor from "@/components/dom/CustomCursor";
+import SoundToggle from "@/components/dom/SoundToggle";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -33,10 +35,13 @@ export default function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
         suppressHydrationWarning
       >
-        <CustomCursor />
-        <LenisProvider>
-          {children}
-        </LenisProvider>
+        <AudioProvider>
+          <CustomCursor />
+          <SoundToggle />
+          <LenisProvider>
+            {children}
+          </LenisProvider>
+        </AudioProvider>
       </body>
     </html>
   );

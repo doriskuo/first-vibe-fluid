@@ -1,6 +1,7 @@
 'use client'
 
 import { motion, AnimatePresence } from 'framer-motion'
+import { useAudio } from '@/components/providers/AudioProvider'
 import Navbar from './Navbar'
 
 interface FinalLandingProps {
@@ -9,6 +10,7 @@ interface FinalLandingProps {
 }
 
 export default function FinalLanding({ showPrompt, showCard }: FinalLandingProps) {
+    const { playSound } = useAudio()
     return (
         <>
             {/* Navbar - only appears in final landing, always expanded */}
@@ -135,6 +137,8 @@ export default function FinalLanding({ showPrompt, showCard }: FinalLandingProps
                                 <motion.button
                                     whileHover={{ scale: 1.02 }}
                                     whileTap={{ scale: 0.98 }}
+                                    onMouseEnter={() => playSound('hover')}
+                                    onClick={() => playSound('click')}
                                     className="relative w-full py-3 px-6 rounded overflow-hidden group"
                                 >
                                     {/* Button gradient background */}

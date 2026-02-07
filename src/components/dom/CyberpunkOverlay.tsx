@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useScrollAnimation } from '@/hooks/useScrollAnimation'
 import { useScrollContext } from '@/components/providers/LenisProvider'
+import { useAudio } from '@/components/providers/AudioProvider'
 import { totalPageHeightVh, getCurrentStageName, scrollConfig } from '@/config/scrollTimeline'
 import { motion, useMotionValueEvent, AnimatePresence } from 'framer-motion'
 import { Zap, Power } from 'lucide-react'
@@ -15,6 +16,7 @@ import { getCalloutVisibility, type FeaturePoint } from '@/config/featureConfig'
 export default function CyberpunkOverlay() {
     const { springProgress } = useScrollAnimation()
     const { setLocked, resetRotation, projectionStarted, resetProjection } = useScrollContext()
+    const { playSound } = useAudio()
     const [isInitialized, setIsInitialized] = useState(false)
     const [bgOpacity, setBgOpacity] = useState(0)
     const [uiVisible, setUiVisible] = useState(false)
@@ -54,6 +56,9 @@ export default function CyberpunkOverlay() {
     // 投影鎖定：當投影真正開始時（從 HolographicProjection 觸發）鎖住滾輪，20秒後解鎖顯示提示
     useEffect(() => {
         if (projectionStarted && !projectionComplete) {
+            // 播放全息投影音效
+            playSound('hologram')
+
             // 鎖住滾輪
             setLocked(true)
 
@@ -66,7 +71,7 @@ export default function CyberpunkOverlay() {
 
             return () => clearTimeout(timer)
         }
-    }, [projectionStarted, projectionComplete, setLocked])
+    }, [projectionStarted, projectionComplete, setLocked, playSound])
 
     useMotionValueEvent(springProgress, "change", (latest) => {
         const rawProgress = (latest * 1000) / totalPageHeightVh
@@ -197,6 +202,7 @@ export default function CyberpunkOverlay() {
     })
 
     const handleInitialize = () => {
+        playSound('initialize')  // Play system boot sound
         setIsInitialized(true)
         resetRotation() // Reset VR rotation before unlocking
         setLocked(false)
@@ -366,6 +372,7 @@ export default function CyberpunkOverlay() {
                             {/* Power Button */}
                             <button
                                 onClick={handleInitialize}
+                                onMouseEnter={() => playSound('hover')}
                                 className="pointer-events-auto relative w-14 h-14 md:w-16 md:h-16 rounded-full bg-black/90 border-2 border-[#00f3ff] text-[#00f3ff] 
                                          hover:bg-[#00f3ff] hover:text-black transition-all duration-300 ease-out 
                                          flex items-center justify-center group-hover:scale-110 group-hover:shadow-[0_0_40px_rgba(0,243,255,0.4)]"

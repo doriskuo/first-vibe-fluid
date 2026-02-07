@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useScrollContext } from '@/components/providers/LenisProvider'
+import { useAudio } from '@/components/providers/AudioProvider'
 import { computedStages } from '@/config/scrollTimeline'
 
 // 定義要顯示在 navbar 的階段及其顯示名稱
@@ -22,11 +23,18 @@ interface NavbarProps {
 
 export default function Navbar({ autoExpand = false }: NavbarProps) {
     const { lenis, setLocked } = useScrollContext()
+    const { playSound } = useAudio()
     const [isExpanded, setIsExpanded] = useState(autoExpand)
 
     useEffect(() => {
         setIsExpanded(autoExpand)
     }, [autoExpand])
+
+    const handleNavClick = (stageName: string, offsetVh: number = 0) => {
+        playSound('click')
+        playSound('whoosh')  // 導航時播放過渡音效
+        scrollToStage(stageName, offsetVh)
+    }
 
     const scrollToStage = (stageName: string, offsetVh: number = 0) => {
         const stage = computedStages.find(s => s.name === stageName)
@@ -69,7 +77,8 @@ export default function Navbar({ autoExpand = false }: NavbarProps) {
                     {navLinks.map((link, index) => (
                         <button
                             key={link.stage}
-                            onClick={() => scrollToStage(link.stage, link.offsetVh)}
+                            onClick={() => handleNavClick(link.stage, link.offsetVh)}
+                            onMouseEnter={() => playSound('hover')}
                             className="relative px-4 py-2 text-xs font-mono tracking-wider uppercase transition-all duration-300 rounded-full group"
                             style={{ color: 'rgba(255,255,255,0.6)' }}
                         >
@@ -115,7 +124,8 @@ export default function Navbar({ autoExpand = false }: NavbarProps) {
                     >
                         {/* 收起按鈕 */}
                         <button
-                            onClick={() => setIsExpanded(false)}
+                            onClick={() => { playSound('click'); setIsExpanded(false) }}
+                            onMouseEnter={() => playSound('hover')}
                             className="px-3 py-2 text-white/40 hover:text-white transition-colors duration-300 self-end"
                             title="收起"
                         >
@@ -127,7 +137,8 @@ export default function Navbar({ autoExpand = false }: NavbarProps) {
                         {navLinks.map((link) => (
                             <button
                                 key={link.stage}
-                                onClick={() => scrollToStage(link.stage, link.offsetVh)}
+                                onClick={() => handleNavClick(link.stage, link.offsetVh)}
+                                onMouseEnter={() => playSound('hover')}
                                 className="relative px-4 py-2 text-xs font-mono tracking-wider uppercase transition-all duration-300 rounded-lg group text-right"
                                 style={{ color: 'rgba(255,255,255,0.6)' }}
                             >
@@ -151,7 +162,8 @@ export default function Navbar({ autoExpand = false }: NavbarProps) {
                         animate={{ opacity: 1, scale: 1 }}
                         exit={{ opacity: 0, scale: 0.5 }}
                         transition={{ duration: 0.3, ease: 'easeOut' }}
-                        onClick={() => setIsExpanded(true)}
+                        onClick={() => { playSound('click'); setIsExpanded(true) }}
+                        onMouseEnter={() => playSound('hover')}
                         className="pointer-events-auto w-10 h-10 rounded-full flex items-center justify-center group"
                         style={glassStyle}
                         title="展開導航"

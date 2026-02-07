@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
+import { useAudio } from '@/components/providers/AudioProvider'
 
 interface FeatureCalloutProps {
     title: string
@@ -33,6 +34,8 @@ export default function FeatureCallout({
 }: FeatureCalloutProps) {
     const [blink, setBlink] = useState(true)
     const calloutRef = useRef<HTMLDivElement>(null)
+    const { playSound } = useAudio()
+    const hasPlayedRef = useRef(false)
 
     // 閃爍動畫
     useEffect(() => {
@@ -41,6 +44,16 @@ export default function FeatureCallout({
         }, 500)
         return () => clearInterval(interval)
     }, [])
+
+    // 播放 callout 音效
+    useEffect(() => {
+        if (visible && !hasPlayedRef.current) {
+            playSound('callout')
+            hasPlayedRef.current = true
+        } else if (!visible) {
+            hasPlayedRef.current = false
+        }
+    }, [visible, playSound])
 
     // 計算位置
     const calloutX = parseFloat(position.x)

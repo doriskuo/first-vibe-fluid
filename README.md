@@ -19,6 +19,7 @@ An immersive **3D interactive web experience** built with Next.js, Three.js, and
 - 🖱️ **自訂流體游標** — 虹彩光暈跟隨滑鼠，增強沉浸感
 - 📱 **平滑滾動體驗** — 使用 Lenis 實現絲滑滾動
 - 🎨 **賽博朋克 UI** — Glassmorphism 風格介面與動態邊框
+- 🔊 **沉浸式音效** — UI 互動音效、階段轉換音效與背景音樂
 
 ---
 
@@ -88,10 +89,12 @@ first-vibe-fluid/
 │   │   │   ├── FinalLanding.tsx      # 產品頁
 │   │   │   └── ...
 │   │   └── providers/       # Context Providers
+│   │       └── AudioProvider.tsx  # 音效系統
 │   ├── config/              # 設定檔
 │   │   └── scrollTimeline.ts  # 滾動階段配置
 │   └── hooks/               # 自訂 Hooks
 ├── public/                  # 靜態資源
+│   └── sounds/              # 音效檔案
 └── README.md
 ```
 
@@ -127,11 +130,10 @@ first-vibe-fluid/
 
 ## 🔧 後續優化方向 ｜ Future Improvements
 
-- 🎵 加入音效與背景音樂
 - 📱 優化行動裝置效能
-- 🌐 部署至 Vercel 正式環境
 - 🧪 加入載入進度條與預載
 - 🎮 更多互動元素與手勢操作
+- 🌐 多語系支援
 
 ---
 

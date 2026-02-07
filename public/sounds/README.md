@@ -1,44 +1,52 @@
-# 🔊 Sound Files Guide
+# 🔊 Sound Effects
 
-## 音效檔案目錄
+## 音效系統說明
 
-音效檔案應放在 `public/sounds/` 目錄下。
+此專案使用 Howler.js 實現音效系統，音效與背景音樂分開控制。
 
-## 需要的音效檔案
+## 目前配置的音效
 
-| 檔案名 | 用途 | 建議來源 |
-|--------|------|----------|
-| `ui-hover.mp3` | 按鈕 hover 音效 | 嗶聲/科幻 UI 音 |
-| `ui-click.mp3` | 按鈕點擊音效 | 確認音/選擇音 |
-| `system-boot.mp3` | INITIALIZE 按鈕音效 | 系統啟動音 |
-| `morph.mp3` | 形變轉換音效 | 變形/過渡音 |
-| `hologram.mp3` | 全息投影音效 | 能量/投影音 |
-| `whoosh.mp3` | 快速移動音效 | 風聲/加速音 |
-| `ambient-cyber.mp3` | 背景環境音（可選） | 賽博朋克氛圍 |
+| 檔案名 | 音效名稱 | 用途 | 觸發時機 |
+|--------|----------|------|----------|
+| `ui-hover.wav` | hover | 按鈕 hover | 滑鼠移過按鈕 |
+| `ui-click.wav` | click | 按鈕點擊 | 點擊按鈕 |
+| `system-boot.wav` | initialize | 系統啟動 | 點擊 INITIALIZE 按鈕 |
+| `hologram.wav` | hologram | 全息投影 | 投影開始時 |
+| `callout.wav` | callout | 功能說明 | Callout 出現時 |
+| `whoosh.wav` | whoosh | 過渡音效 | 導航切換時 |
+| `tunnel.wav` | portal | 隧道傳送 | 進入 Portal 階段 |
+| `water-swish.wav` | fluidSwish | 液態互動 | 滾動時滑鼠移動在液態區 |
+| `ambient.mp3` | ambient | 背景音樂 | 由右上角按鈕控制 |
+
+## 音效配置參數
+
+```typescript
+const soundConfig = {
+    hover: { src: '/sounds/ui-hover.wav', volume: 0.25 },
+    click: { src: '/sounds/ui-click.wav', volume: 0.3 },
+    initialize: { src: '/sounds/system-boot.wav', volume: 0.4 },
+    hologram: { src: '/sounds/hologram.wav', volume: 0.35 },
+    callout: { src: '/sounds/callout.wav', volume: 0.3 },
+    whoosh: { src: '/sounds/whoosh.wav', volume: 0.35 },
+    portal: { src: '/sounds/tunnel.wav', volume: 0.4 },
+    fluidSwish: { src: '/sounds/water-swish.wav', volume: 0.35, rate: 0.55 },
+    ambient: { src: '/sounds/ambient.mp3', volume: 0.1, loop: true },
+}
+```
+
+## 控制邏輯
+
+- **音效 (SFX)** - 預設開啟，只要有任何用戶互動後即可播放
+- **背景音樂** - 預設關閉，由右上角 🎵 按鈕控制
 
 ## 免費音效來源
 
-1. **Freesound** - https://freesound.org
-   - 搜尋 "sci-fi UI", "cyberpunk", "hologram"
-   - 需要註冊帳號
-
-2. **Mixkit** - https://mixkit.co/free-sound-effects/
-   - 搜尋 "technology", "sci-fi", "interface"
-   - 免費商用
-
+1. **Mixkit** - https://mixkit.co/free-sound-effects/
+2. **Freesound** - https://freesound.org
 3. **Pixabay** - https://pixabay.com/sound-effects/
-   - 搜尋 "futuristic", "interface", "beep"
-   - CC0 授權
 
-## 下載後處理
+## 新增音效步驟
 
-1. 將音效轉換為 MP3 格式
-2. 建議音效長度：UI 音效 < 1 秒，過渡音效 1-3 秒
-3. 重新命名為上表的檔案名
-4. 放入 `public/sounds/` 目錄
-
-## 測試
-
-1. 重啟開發伺服器
-2. 點擊右下角 🔊 開啟音效
-3. 移動滑鼠、點擊按鈕測試
+1. 在 `soundConfig` 中新增設定
+2. 將音效檔放入 `public/sounds/`
+3. 在對應組件中呼叫 `playSound('soundName')`

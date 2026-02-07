@@ -5,6 +5,7 @@ import { useFrame } from '@react-three/fiber'
 import { MeshTransmissionMaterial, Environment } from '@react-three/drei'
 import * as THREE from 'three'
 import { useScrollAnimation } from '@/hooks/useScrollAnimation'
+import { useDeviceSize } from '@/hooks/useDeviceSize'
 import { useScrollContext } from '@/components/providers/LenisProvider'
 import WatchGear from './WatchGear'
 import VRHeadphones from './VRHeadphones'
@@ -50,6 +51,10 @@ export default function GlassWaterDrop() {
 
     const { getState } = useScrollAnimation()
     const { shouldResetRotation, clearResetFlag, onProjectionStart } = useScrollContext()
+    const { isMobile, isTablet } = useDeviceSize()
+
+    // Mobile-responsive scale multiplier
+    const responsiveScale = isMobile ? 0.7 : isTablet ? 0.85 : 1.0
 
     // 拖曳旋轉狀態 (X, Y, Z 三軸)
     const [isDragging, setIsDragging] = useState(false)
@@ -415,7 +420,8 @@ export default function GlassWaterDrop() {
                 rotY = t * -0.15
             }
 
-            containerRef.current.scale.set(scale, scale, scale)
+            const finalScale = scale * responsiveScale
+            containerRef.current.scale.set(finalScale, finalScale, finalScale)
             containerRef.current.position.set(posX, posY, 0)
             containerRef.current.rotation.x = rotX
             containerRef.current.rotation.z = rotZ

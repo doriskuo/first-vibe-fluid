@@ -71,7 +71,7 @@ export default function Navbar({ autoExpand = false }: NavbarProps) {
                     initial={{ opacity: 0, scale: 0.8, y: -10 }}
                     animate={{ opacity: 1, scale: 1, y: 0 }}
                     transition={{ duration: 0.4, ease: 'easeOut' }}
-                    className="flex gap-1 px-2 py-2 rounded-full pointer-events-auto"
+                    className="flex gap-0.5 sm:gap-1 px-1.5 sm:px-2 py-1.5 sm:py-2 rounded-full pointer-events-auto"
                     style={glassStyle}
                 >
                     {navLinks.map((link, index) => (
@@ -79,7 +79,7 @@ export default function Navbar({ autoExpand = false }: NavbarProps) {
                             key={link.stage}
                             onClick={() => handleNavClick(link.stage, link.offsetVh)}
                             onMouseEnter={() => playSound('hover')}
-                            className="relative px-4 py-2 text-xs font-mono tracking-wider uppercase transition-all duration-300 rounded-full group"
+                            className="relative px-2 sm:px-4 py-1.5 sm:py-2 text-[10px] sm:text-xs font-mono tracking-wider uppercase transition-all duration-300 rounded-full group"
                             style={{ color: 'rgba(255,255,255,0.6)' }}
                         >
                             <span
@@ -109,7 +109,7 @@ export default function Navbar({ autoExpand = false }: NavbarProps) {
 
     // ===== 非 finalLanding 模式：右側直排 =====
     return (
-        <nav className="fixed top-1/2 -translate-y-1/2 right-4 z-[200] pointer-events-none">
+        <nav className="fixed top-1/2 -translate-y-1/2 right-2 sm:right-4 z-[200] pointer-events-none">
             <AnimatePresence mode="wait">
                 {isExpanded ? (
                     // 展開狀態：直排導航
@@ -139,7 +139,7 @@ export default function Navbar({ autoExpand = false }: NavbarProps) {
                                 key={link.stage}
                                 onClick={() => handleNavClick(link.stage, link.offsetVh)}
                                 onMouseEnter={() => playSound('hover')}
-                                className="relative px-4 py-2 text-xs font-mono tracking-wider uppercase transition-all duration-300 rounded-lg group text-right"
+                                className="relative px-3 sm:px-4 py-1.5 sm:py-2 text-[10px] sm:text-xs font-mono tracking-wider uppercase transition-all duration-300 rounded-lg group text-right"
                                 style={{ color: 'rgba(255,255,255,0.6)' }}
                             >
                                 <span
@@ -164,7 +164,7 @@ export default function Navbar({ autoExpand = false }: NavbarProps) {
                         transition={{ duration: 0.3, ease: 'easeOut' }}
                         onClick={() => { playSound('click'); setIsExpanded(true) }}
                         onMouseEnter={() => playSound('hover')}
-                        className="pointer-events-auto w-10 h-10 rounded-full flex items-center justify-center group"
+                        className="pointer-events-auto w-8 h-8 sm:w-10 sm:h-10 rounded-full flex items-center justify-center group"
                         style={glassStyle}
                         title="展開導航"
                     >

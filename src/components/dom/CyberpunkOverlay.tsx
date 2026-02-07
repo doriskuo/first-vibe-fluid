@@ -255,7 +255,7 @@ export default function CyberpunkOverlay() {
             )}
 
             {/* 0. Intro Narrative Layer - Liquid Phase (consciousness flowing) */}
-            <div className="fixed inset-0 z-[100] flex items-center justify-start pl-12 md:pl-24 pointer-events-none">
+            <div className="fixed inset-0 z-[100] flex items-center justify-start pl-6 sm:pl-12 md:pl-24 pointer-events-none">
                 <AnimatePresence mode="wait">
                     {/* Layer 1: Brand Name */}
                     {showIntroBrand && (
@@ -267,7 +267,7 @@ export default function CyberpunkOverlay() {
                             transition={{ duration: 0.8, ease: "easeOut" }}
                             className="absolute flex flex-col items-center gap-2"
                         >
-                            <span className="text-gray-500/80 text-4xl md:text-6xl font-light tracking-[0.5em] uppercase">
+                            <span className="text-gray-500/80 text-2xl sm:text-4xl md:text-6xl font-light tracking-[0.3em] sm:tracking-[0.5em] uppercase">
                                 FLUID
                             </span>
                             {/* Rotating slogan */}
@@ -278,7 +278,7 @@ export default function CyberpunkOverlay() {
                                     animate={{ opacity: 1, y: 0 }}
                                     exit={{ opacity: 0, y: -10 }}
                                     transition={{ duration: 0.5 }}
-                                    className="text-gray-500/50 text-xs md:text-sm font-light tracking-[0.3em] uppercase italic"
+                                    className="text-gray-500/50 text-[10px] sm:text-xs md:text-sm font-light tracking-[0.2em] sm:tracking-[0.3em] uppercase italic"
                                 >
                                     {slogans[sloganIndex]}
                                 </motion.span>
@@ -296,7 +296,7 @@ export default function CyberpunkOverlay() {
                             transition={{ duration: 1, ease: "easeOut" }}
                             className="absolute text-center"
                         >
-                            <span className="text-gray-700/60 text-lg md:text-2xl font-light tracking-[0.4em] uppercase italic">
+                            <span className="text-gray-700/60 text-sm sm:text-lg md:text-2xl font-light tracking-[0.2em] sm:tracking-[0.4em] uppercase italic">
                                 Where Thoughts Take Shape
                             </span>
                         </motion.div>
@@ -312,10 +312,10 @@ export default function CyberpunkOverlay() {
                             animate={{ opacity: 1 }}
                             exit={{ opacity: 0 }}
                             transition={{ duration: 0.5 }}
-                            className="absolute bottom-16 flex flex-col items-center gap-4"
+                            className="absolute bottom-12 sm:bottom-16 flex flex-col items-center gap-3 sm:gap-4"
                         >
                             {/* Mouse interaction hint */}
-                            <span className="text-gray-500/60 text-xs tracking-[0.2em] uppercase">
+                            <span className="text-gray-500/60 text-[10px] sm:text-xs tracking-[0.15em] sm:tracking-[0.2em] uppercase">
                                 Move to Flow
                             </span>
                             {/* Scroll hint */}
@@ -404,7 +404,7 @@ export default function CyberpunkOverlay() {
 
                 {/* Central Interaction Button - Moved to BOTTOM RIGHT */}
                 {!isInitialized && (
-                    <div className="absolute bottom-8 right-6 md:bottom-10 md:right-16 flex flex-col items-center gap-4 z-50">
+                    <div className="absolute bottom-6 right-4 sm:bottom-8 sm:right-6 md:bottom-10 md:right-16 flex flex-col items-center gap-3 sm:gap-4 z-50">
                         <div className="relative group">
                             {/* Glow Effect */}
                             <div className="absolute inset-0 bg-[#00f3ff] rounded-full blur-[20px] opacity-20 group-hover:opacity-60 transition-opacity duration-500 will-change-transform" />
@@ -413,11 +413,11 @@ export default function CyberpunkOverlay() {
                             <button
                                 onClick={handleInitialize}
                                 onMouseEnter={() => playSound('hover')}
-                                className="pointer-events-auto relative w-14 h-14 md:w-16 md:h-16 rounded-full bg-black/90 border-2 border-[#00f3ff] text-[#00f3ff] 
+                                className="pointer-events-auto relative w-12 h-12 sm:w-14 sm:h-14 md:w-16 md:h-16 rounded-full bg-black/90 border-2 border-[#00f3ff] text-[#00f3ff] 
                                          hover:bg-[#00f3ff] hover:text-black transition-all duration-300 ease-out 
                                          flex items-center justify-center group-hover:scale-110 group-hover:shadow-[0_0_40px_rgba(0,243,255,0.4)]"
                             >
-                                <Power className="w-6 h-6 md:w-7 md:h-7 stroke-[2px]" />
+                                <Power className="w-5 h-5 sm:w-6 sm:h-6 md:w-7 md:h-7 stroke-[2px]" />
                             </button>
 
                             {/* Orbit Ring Animation */}
@@ -469,9 +469,9 @@ export default function CyberpunkOverlay() {
                         animate={{ opacity: 1, y: 0 }}
                         exit={{ opacity: 0, y: -10 }}
                         transition={{ duration: 0.8, ease: "easeOut" }}
-                        className="fixed bottom-16 w-full flex justify-center pointer-events-none z-50"
+                        className="fixed bottom-12 sm:bottom-16 w-full flex justify-center pointer-events-none z-50"
                     >
-                        <span className="text-white/60 text-sm md:text-base font-light tracking-[0.4em] uppercase italic">
+                        <span className="text-white/60 text-xs sm:text-sm md:text-base font-light tracking-[0.2em] sm:tracking-[0.4em] uppercase italic">
                             {vibeText}
                         </span>
                     </motion.div>

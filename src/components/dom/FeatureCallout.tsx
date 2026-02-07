@@ -3,6 +3,7 @@
 import { useEffect, useState, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useAudio } from '@/components/providers/AudioProvider'
+import { useDeviceSize } from '@/hooks/useDeviceSize'
 
 interface FeatureCalloutProps {
     title: string
@@ -36,6 +37,15 @@ export default function FeatureCallout({
     const calloutRef = useRef<HTMLDivElement>(null)
     const { playSound } = useAudio()
     const hasPlayedRef = useRef(false)
+    const { isMobile } = useDeviceSize()
+
+    // Responsive sizing
+    const boxPadding = isMobile ? '10px 12px' : '14px 18px'
+    const minWidth = isMobile ? '160px' : '200px'
+    const minHeight = isMobile ? '50px' : '70px'
+    const titleSize = isMobile ? '9px' : '11px'
+    const valueSize = isMobile ? '16px' : '22px'
+    const descSize = isMobile ? '8px' : '10px'
 
     // 閃爍動畫
     useEffect(() => {
@@ -303,9 +313,9 @@ export default function FeatureCallout({
                             background: 'rgba(0, 10, 20, 0.92)',
                             border: '1px solid rgba(0, 255, 255, 0.6)',
                             borderRadius: '2px',
-                            padding: '14px 18px',
-                            minWidth: '200px',
-                            minHeight: '70px',
+                            padding: boxPadding,
+                            minWidth: minWidth,
+                            minHeight: minHeight,
                             boxShadow: `
                                         0 0 15px rgba(0, 255, 255, 0.3),
                                         0 0 30px rgba(0, 255, 255, 0.1),
@@ -376,7 +386,7 @@ export default function FeatureCallout({
                                 }} />
                                 <span style={{
                                     color: '#00ffff',
-                                    fontSize: '11px',
+                                    fontSize: titleSize,
                                     fontFamily: '"Orbitron", "Courier New", monospace',
                                     fontWeight: 700,
                                     letterSpacing: '2px',
@@ -390,7 +400,7 @@ export default function FeatureCallout({
                             {/* 數值 */}
                             <div style={{
                                 color: '#ffffff',
-                                fontSize: '22px',
+                                fontSize: valueSize,
                                 fontFamily: '"Orbitron", "Courier New", monospace',
                                 fontWeight: 700,
                                 letterSpacing: '3px',
@@ -403,7 +413,7 @@ export default function FeatureCallout({
                             {description && (
                                 <div style={{
                                     color: 'rgba(0, 200, 220, 0.7)',
-                                    fontSize: '10px',
+                                    fontSize: descSize,
                                     fontFamily: '"Courier New", monospace',
                                     marginTop: '6px',
                                     letterSpacing: '1px',

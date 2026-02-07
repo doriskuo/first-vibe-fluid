@@ -20,7 +20,7 @@ export default function SoundToggle() {
     return (
         <motion.button
             onClick={handleClick}
-            className="fixed top-6 right-6 z-[100] p-2 flex items-center justify-center cursor-pointer pointer-events-auto"
+            className="fixed top-4 right-4 sm:top-6 sm:right-6 z-[100] p-1.5 sm:p-2 flex items-center justify-center cursor-pointer pointer-events-auto"
             style={{
                 filter: isMusicPlaying
                     ? 'drop-shadow(0 0 8px rgba(0,243,255,0.6))'

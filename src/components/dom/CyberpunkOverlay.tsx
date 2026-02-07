@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { useScrollAnimation } from '@/hooks/useScrollAnimation'
 import { useScrollContext } from '@/components/providers/LenisProvider'
 import { useAudio } from '@/components/providers/AudioProvider'
@@ -34,6 +34,11 @@ export default function CyberpunkOverlay() {
     const [showFinalCard, setShowFinalCard] = useState(false)      // Phase 2: Card after scroll
     // Projection complete state (used to ensure timer only runs once)
     const [projectionComplete, setProjectionComplete] = useState(false)
+    // Portal sound state (to play tunnel sound only once)
+    const [portalSoundPlayed, setPortalSoundPlayed] = useState(false)
+    // Fluid swish sound cooldown (prevent rapid repeated plays)
+    const fluidSwishCooldownRef = useRef(false)
+    const [isInLiquidPhase, setIsInLiquidPhase] = useState(true)  // 液態階段偵測
     // Rotating slogans carousel
     const [sloganIndex, setSloganIndex] = useState(0)
     const slogans = [
@@ -43,6 +48,28 @@ export default function CyberpunkOverlay() {
         'Where Thoughts Take Shape',
         'Let It Flow'
     ]
+
+    // Handle mouse move on liquid phase - play swish sound (using window event listener)
+    useEffect(() => {
+        const handleMouseMove = () => {
+            if (!isInLiquidPhase || fluidSwishCooldownRef.current) return
+
+            fluidSwishCooldownRef.current = true
+
+            // 延遲 300ms 後播放音效，讓液態視覺先反應
+            setTimeout(() => {
+                playSound('fluidSwish')
+            }, 300)
+
+            // 冷卻時間 1800ms，讓音效更加緩和
+            setTimeout(() => {
+                fluidSwishCooldownRef.current = false
+            }, 1800)
+        }
+
+        window.addEventListener('mousemove', handleMouseMove)
+        return () => window.removeEventListener('mousemove', handleMouseMove)
+    }, [playSound, isInLiquidPhase])
 
     // Rotate slogans every 2.5s while brand is visible
     useEffect(() => {
@@ -76,6 +103,9 @@ export default function CyberpunkOverlay() {
     useMotionValueEvent(springProgress, "change", (latest) => {
         const rawProgress = (latest * 1000) / totalPageHeightVh
         const currentStage = getCurrentStageName(rawProgress)
+
+        // 更新液態階段狀態（用於滑鼠互動音效）
+        setIsInLiquidPhase(['liquid', 'teardrop', 'bounce', 'glass', 'rgbGlow'].includes(currentStage))
 
         // Show Black Background (Patterns) - IMMEDIATE
         if (['cyberpunkEntry', 'descent', 'theaterSpace', 'audioSim', 'visualSim', 'returnToCenter', 'centerLock', 'featureShowcase'].includes(currentStage)) {
@@ -168,9 +198,18 @@ export default function CyberpunkOverlay() {
         else if (latest >= 9.2 && currentStage === 'portal') {
             setVibeTextVisible(true)
             setVibeText('Immerse Yourself')
+            // 進入隧道時播放 portal 音效（只播放一次）
+            if (!portalSoundPlayed) {
+                playSound('portal')
+                setPortalSoundPlayed(true)
+            }
         }
         else {
             setVibeTextVisible(false)
+            // 離開 portal 階段時重設，讓下次進入可以再播放
+            if (currentStage !== 'portal') {
+                setPortalSoundPlayed(false)
+            }
         }
 
         // ===== INTRO NARRATIVE: Layered text during liquid phase =====
@@ -209,6 +248,7 @@ export default function CyberpunkOverlay() {
     }
     return (
         <>
+
             {/* Collapsible Navbar - visible in all stages except finalLanding (FinalLanding has its own) */}
             {!showFinalCard && (
                 <Navbar autoExpand={false} />

@@ -35,6 +35,8 @@ const soundConfig = {
     hologram: { src: '/sounds/hologram.wav', volume: 0.35 },
     callout: { src: '/sounds/callout.wav', volume: 0.3 },
     whoosh: { src: '/sounds/whoosh.wav', volume: 0.35 },
+    portal: { src: '/sounds/tunnel.wav', volume: 0.4 },  // 進入隧道/傳送門
+    fluidSwish: { src: '/sounds/water-swish.wav', volume: 0.35, rate: 0.55 },  // 液態區互動（放慢播放）
 
     // 環境音效（由按鈕控制）
     ambient: { src: '/sounds/ambient.mp3', volume: 0.1, loop: true },
@@ -83,6 +85,7 @@ export default function AudioProvider({
                 src: [config.src],
                 volume: config.volume * volume,
                 loop: 'loop' in config ? config.loop : false,
+                rate: 'rate' in config ? config.rate : 1.0,  // 支援播放速度
                 preload: true,
                 onloaderror: () => {
                     console.warn(`Failed to load sound: ${name}`)

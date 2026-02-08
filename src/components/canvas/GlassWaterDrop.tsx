@@ -50,7 +50,7 @@ export default function GlassWaterDrop() {
     const rightGear4Ref = useRef<THREE.Group>(null)
 
     const { getState } = useScrollAnimation()
-    const { shouldResetRotation, clearResetFlag, onProjectionStart } = useScrollContext()
+    const { shouldResetRotation, clearResetFlag, onProjectionStart, manualResetTrigger } = useScrollContext()
     const { aspectRatio, isPortrait } = useViewport()
 
     // Position factor: reduce horizontal movement on portrait screens
@@ -58,11 +58,38 @@ export default function GlassWaterDrop() {
     // Scale factor: reduce VR size on portrait screens
     const scaleFactor = isPortrait ? Math.min(1, aspectRatio * 0.9 + 0.1) : 1
 
-    // 拖曳旋轉狀態 (X, Y, Z 三軸)
+    // 拖曳旋轉狀態 (X, Y, Z 三軸) - 這是「手動偏移量」
     const [isDragging, setIsDragging] = useState(false)
-    const [rotation, setRotation] = useState({ x: 0, y: 0, z: 0 })
+    const [manualRotation, setManualRotation] = useState({ x: 0, y: 0, z: 0 })
     const [isResetting, setIsResetting] = useState(false) // Track if reset animation is in progress
     const lastPointer = useRef({ x: 0, y: 0 })
+
+    // [New] 自動重置手動旋轉 (當階段改變時)
+    useEffect(() => {
+        if (manualResetTrigger > 0 && (manualRotation.x !== 0 || manualRotation.y !== 0 || manualRotation.z !== 0)) {
+            // 平滑歸零手動旋轉
+            const startRot = { ...manualRotation }
+            const startTime = performance.now()
+            const duration = 800 // 800ms 平滑歸位
+
+            const animateReset = (time: number) => {
+                const elapsed = time - startTime
+                const progress = Math.min(elapsed / duration, 1)
+                const t = 1 - Math.pow(1 - progress, 3) // easeOutCubic
+
+                setManualRotation({
+                    x: startRot.x * (1 - t),
+                    y: startRot.y * (1 - t),
+                    z: startRot.z * (1 - t)
+                })
+
+                if (progress < 1) {
+                    requestAnimationFrame(animateReset)
+                }
+            }
+            requestAnimationFrame(animateReset)
+        }
+    }, [manualResetTrigger])
 
     // VR 耳罩狀態
     const [headphonesVisible, setHeadphonesVisible] = useState(false)
@@ -91,13 +118,13 @@ export default function GlassWaterDrop() {
     const [holoOpacity, setHoloOpacity] = useState(0)
     const [vrFlipProgress, setVrFlipProgress] = useState(0)
 
-    // ===== Rotation Reset Animation =====
+    // ===== Rotation Reset Animation (Legacy global reset, keep if still used elsewhere) =====
     useEffect(() => {
         if (shouldResetRotation && !isResetting) {
             setIsResetting(true)
 
-            // Animate rotation back to origin over 500ms
-            const startRotation = { ...rotation }
+            // Animate manualRotation back to origin over 500ms
+            const startRotation = { ...manualRotation }
             const startTime = Date.now()
             const duration = 500
 
@@ -108,7 +135,7 @@ export default function GlassWaterDrop() {
                 // Ease-out curve for smooth deceleration
                 const eased = 1 - Math.pow(1 - progress, 3)
 
-                setRotation({
+                setManualRotation({
                     x: startRotation.x * (1 - eased),
                     y: startRotation.y * (1 - eased),
                     z: startRotation.z * (1 - eased)
@@ -117,7 +144,7 @@ export default function GlassWaterDrop() {
                 if (progress < 1) {
                     requestAnimationFrame(animate)
                 } else {
-                    setRotation({ x: 0, y: 0, z: 0 })
+                    setManualRotation({ x: 0, y: 0, z: 0 })
                     setIsResetting(false)
                     clearResetFlag()
                 }
@@ -125,7 +152,7 @@ export default function GlassWaterDrop() {
 
             requestAnimationFrame(animate)
         }
-    }, [shouldResetRotation, isResetting, rotation, clearResetFlag])
+    }, [shouldResetRotation, isResetting, manualRotation, clearResetFlag])
 
     // VR 耳機形狀參數
     const vrParams = useMemo(() => ({
@@ -197,7 +224,7 @@ export default function GlassWaterDrop() {
 
             // 垂直拖曳 → X 軸旋轉（前後翻轉）
             // 水平拖曳 → Z 軸旋轉（左右傾斜）
-            setRotation(prev => ({
+            setManualRotation(prev => ({
                 x: prev.x + deltaY * 0.01,
                 y: prev.y + deltaX * 0.005,  // Y 軸也轉一點點
                 z: prev.z + deltaX * 0.01    // Z 軸傾斜
@@ -528,150 +555,152 @@ export default function GlassWaterDrop() {
         const xOffset = currentMorphProgress * (Math.PI / 2)
 
         if (meshRef.current.visible) {
-            meshRef.current.rotation.x = rotation.x + xOffset
-            meshRef.current.rotation.y = rotation.y
-            meshRef.current.rotation.z = rotation.z
+            if (meshRef.current.visible) {
+                meshRef.current.rotation.x = manualRotation.x + xOffset
+                meshRef.current.rotation.y = manualRotation.y
+                meshRef.current.rotation.z = manualRotation.z
 
-            // 內部結構同步旋轉
-            if (coreGroupRef.current) {
-                coreGroupRef.current.rotation.copy(meshRef.current.rotation)
+                // 內部結構同步旋轉
+                if (coreGroupRef.current) {
+                    coreGroupRef.current.rotation.copy(meshRef.current.rotation)
 
-                // 計算變形進度
-                const morphT = Math.min(Math.max((scrollValue - 2.4) / 0.5, 0), 1)
+                    // 計算變形進度
+                    const morphT = Math.min(Math.max((scrollValue - 2.4) / 0.5, 0), 1)
 
-                // VR 階段隱藏賽博朋克光暈（讓齒輪更清晰）
-                if (morphT > 0.3) {
-                    coreGroupRef.current.visible = false
-                } else {
-                    // 返回開頭時重新顯示
-                    coreGroupRef.current.visible = true
-                }
+                    // VR 階段隱藏賽博朋克光暈（讓齒輪更清晰）
+                    if (morphT > 0.3) {
+                        coreGroupRef.current.visible = false
+                    } else {
+                        // 返回開頭時重新顯示
+                        coreGroupRef.current.visible = true
+                    }
 
-                // 齒輪淡入動畫 (3.3 - 3.8)
-                const gearStart = 3.3
-                const gearEnd = 3.8
-                let gearOpacity = 0
+                    // 齒輪淡入動畫 (3.3 - 3.8)
+                    const gearStart = 3.3
+                    const gearEnd = 3.8
+                    let gearOpacity = 0
 
-                if (scrollValue > gearStart) {
-                    const t = Math.min((scrollValue - gearStart) / (gearEnd - gearStart), 1)
-                    gearOpacity = t * t * (3 - 2 * t) // smoothstep
-                }
+                    if (scrollValue > gearStart) {
+                        const t = Math.min((scrollValue - gearStart) / (gearEnd - gearStart), 1)
+                        gearOpacity = t * t * (3 - 2 * t) // smoothstep
+                    }
 
-                if (gearGroupRef.current) {
-                    const isGearVisible = gearOpacity > 0.01 && meshRef.current.visible
-                    gearGroupRef.current.visible = isGearVisible
+                    if (gearGroupRef.current) {
+                        const isGearVisible = gearOpacity > 0.01 && meshRef.current.visible
+                        gearGroupRef.current.visible = isGearVisible
 
-                    if (isGearVisible) {
-                        gearGroupRef.current.rotation.copy(meshRef.current.rotation)
+                        if (isGearVisible) {
+                            gearGroupRef.current.rotation.copy(meshRef.current.rotation)
 
-                        // 動態更新材質透明度
-                        gearGroupRef.current.traverse((child) => {
-                            if (child instanceof THREE.Mesh && child.material) {
-                                const materials = Array.isArray(child.material) ? child.material : [child.material];
-                                materials.forEach((mat) => {
-                                    mat.opacity = gearOpacity
-                                    mat.transparent = true
-                                    mat.depthWrite = gearOpacity > 0.9
-                                })
-                            }
-                        })
+                            // 動態更新材質透明度
+                            gearGroupRef.current.traverse((child) => {
+                                if (child instanceof THREE.Mesh && child.material) {
+                                    const materials = Array.isArray(child.material) ? child.material : [child.material];
+                                    materials.forEach((mat) => {
+                                        mat.opacity = gearOpacity
+                                        mat.transparent = true
+                                        mat.depthWrite = gearOpacity > 0.9
+                                    })
+                                }
+                            })
 
-                        // 齒輪獨立自轉動畫
-                        const time = performance.now() * 0.0003  // 基礎時間
+                            // 齒輪獨立自轉動畫
+                            const time = performance.now() * 0.0003  // 基礎時間
 
-                        // ===== 左側群組（5顆）- 各自獨立轉速 =====
-                        if (gear1Ref.current) gear1Ref.current.rotation.z = time * 0.8   // 大齒輪慢
-                        if (gear2Ref.current) gear2Ref.current.rotation.z = -time * 1.2  // 中齒輪
-                        if (gear3Ref.current) gear3Ref.current.rotation.z = time * 1.8   // 小齒輪快
-                        if (gear4Ref.current) gear4Ref.current.rotation.z = -time * 2.5  // 微型更快
-                        if (gear5Ref.current) gear5Ref.current.rotation.z = time * 3.2   // 超小最快
+                            // ===== 左側群組（5顆）- 各自獨立轉速 =====
+                            if (gear1Ref.current) gear1Ref.current.rotation.z = time * 0.8   // 大齒輪慢
+                            if (gear2Ref.current) gear2Ref.current.rotation.z = -time * 1.2  // 中齒輪
+                            if (gear3Ref.current) gear3Ref.current.rotation.z = time * 1.8   // 小齒輪快
+                            if (gear4Ref.current) gear4Ref.current.rotation.z = -time * 2.5  // 微型更快
+                            if (gear5Ref.current) gear5Ref.current.rotation.z = time * 3.2   // 超小最快
 
-                        // ===== 右側群組（4顆）- 不對稱轉速 =====
-                        if (rightGear1Ref.current) rightGear1Ref.current.rotation.z = -time * 1.0
-                        if (rightGear2Ref.current) rightGear2Ref.current.rotation.z = time * 1.6
-                        if (rightGear3Ref.current) rightGear3Ref.current.rotation.z = -time * 2.2
-                        if (rightGear4Ref.current) rightGear4Ref.current.rotation.z = time * 2.8
+                            // ===== 右側群組（4顆）- 不對稱轉速 =====
+                            if (rightGear1Ref.current) rightGear1Ref.current.rotation.z = -time * 1.0
+                            if (rightGear2Ref.current) rightGear2Ref.current.rotation.z = time * 1.6
+                            if (rightGear3Ref.current) rightGear3Ref.current.rotation.z = -time * 2.2
+                            if (rightGear4Ref.current) rightGear4Ref.current.rotation.z = time * 2.8
+                        }
                     }
                 }
             }
-        }
 
-        // ===== VR 耳罩跟隨主體 =====
-        if (meshRef.current) {
-            const morphT = Math.min(Math.max((scrollValue - 2.4) / 0.5, 0), 1)
-            const shouldShow = morphT >= 1 && meshRef.current.visible
-            setHeadphonesVisible(shouldShow)
-            if (materialRef.current) {
-                setHeadphonesOpacity(materialRef.current.opacity)
+            // ===== VR 耳罩跟隨主體 =====
+            if (meshRef.current) {
+                const morphT = Math.min(Math.max((scrollValue - 2.4) / 0.5, 0), 1)
+                const shouldShow = morphT >= 1 && meshRef.current.visible
+                setHeadphonesVisible(shouldShow)
+                if (materialRef.current) {
+                    setHeadphonesOpacity(materialRef.current.opacity)
+                }
+                headphonesRotation.current.copy(meshRef.current.rotation)
             }
-            headphonesRotation.current.copy(meshRef.current.rotation)
-        }
 
-        // ===== 掃描效果 (scrollValue 4.5+ 持續顯示) =====
-        const scanStart = 4.5
-        if (scrollValue >= scanStart && meshRef.current?.visible) {
-            setScanVisible(true)
-        } else {
-            setScanVisible(false)
-        }
+            // ===== 掃描效果 (scrollValue 4.5+ 持續顯示) =====
+            const scanStart = 4.5
+            if (scrollValue >= scanStart && meshRef.current?.visible) {
+                setScanVisible(true)
+            } else {
+                setScanVisible(false)
+            }
 
-        // DEBUG: Log scroll and visibility state
-        if (scrollValue > 4.0) {
-            console.log('scrollValue:', scrollValue.toFixed(2), 'meshVisible:', meshRef.current?.visible)
-        }
+            // DEBUG: Log scroll and visibility state
+            if (scrollValue > 4.0) {
+                console.log('scrollValue:', scrollValue.toFixed(2), 'meshVisible:', meshRef.current?.visible)
+            }
 
-        // ===== 粒子效果 (scrollValue 4.8+) =====
-        const particleStart = 4.8
-        if (scrollValue >= particleStart && meshRef.current?.visible) {
-            setParticlesVisible(true)
-            const pOpacity = Math.min((scrollValue - particleStart) / 0.3, 1)
-            setParticlesOpacity(pOpacity)
-        } else {
-            setParticlesVisible(false)
-            setParticlesOpacity(0)
-        }
+            // ===== 粒子效果 (scrollValue 4.8+) =====
+            const particleStart = 4.8
+            if (scrollValue >= particleStart && meshRef.current?.visible) {
+                setParticlesVisible(true)
+                const pOpacity = Math.min((scrollValue - particleStart) / 0.3, 1)
+                setParticlesOpacity(pOpacity)
+            } else {
+                setParticlesVisible(false)
+                setParticlesOpacity(0)
+            }
 
-        // ===== 全息電路 (scrollValue 5.0+) =====
-        const circuitStart = 5.0
-        const circuitGrowEnd = 5.8
-        if (scrollValue >= circuitStart && meshRef.current?.visible) {
-            setCircuitVisible(true)
-            const cOpacity = Math.min((scrollValue - circuitStart) / 0.3, 1)
-            setCircuitOpacity(cOpacity)
+            // ===== 全息電路 (scrollValue 5.0+) =====
+            const circuitStart = 5.0
+            const circuitGrowEnd = 5.8
+            if (scrollValue >= circuitStart && meshRef.current?.visible) {
+                setCircuitVisible(true)
+                const cOpacity = Math.min((scrollValue - circuitStart) / 0.3, 1)
+                setCircuitOpacity(cOpacity)
 
-            // 電路生長進度
-            const growth = Math.min(Math.max((scrollValue - circuitStart) / (circuitGrowEnd - circuitStart), 0), 1)
-            setCircuitGrowth(growth)
-        } else {
-            setCircuitVisible(false)
-            setCircuitOpacity(0)
-            setCircuitGrowth(0)
-        }
+                // 電路生長進度
+                const growth = Math.min(Math.max((scrollValue - circuitStart) / (circuitGrowEnd - circuitStart), 0), 1)
+                setCircuitGrowth(growth)
+            } else {
+                setCircuitVisible(false)
+                setCircuitOpacity(0)
+                setCircuitGrowth(0)
+            }
 
-        // ===== 全息投影 (scrollValue 32.0+ 之後，VR 朝上投射) =====
-        const holoStart = 32.0
-        const holoFadeEnd = 32.5
-        const holoFadeOutStart = 35.0  // Start fading out when entering finalLanding
-        const holoFadeOutEnd = 35.5
+            // ===== 全息投影 (scrollValue 32.0+ 之後，VR 朝上投射) =====
+            const holoStart = 32.0
+            const holoFadeEnd = 32.5
+            const holoFadeOutStart = 35.0  // Start fading out when entering finalLanding
+            const holoFadeOutEnd = 35.5
 
-        if (scrollValue >= holoFadeOutStart && meshRef.current?.visible) {
-            // Fade out projection during finalLanding
-            setHoloVisible(true)
-            const fadeOutProgress = Math.min((scrollValue - holoFadeOutStart) / (holoFadeOutEnd - holoFadeOutStart), 1)
-            setHoloOpacity(1 - fadeOutProgress)
+            if (scrollValue >= holoFadeOutStart && meshRef.current?.visible) {
+                // Fade out projection during finalLanding
+                setHoloVisible(true)
+                const fadeOutProgress = Math.min((scrollValue - holoFadeOutStart) / (holoFadeOutEnd - holoFadeOutStart), 1)
+                setHoloOpacity(1 - fadeOutProgress)
 
-            // Hide completely after fade out
-            if (fadeOutProgress >= 1) {
+                // Hide completely after fade out
+                if (fadeOutProgress >= 1) {
+                    setHoloVisible(false)
+                    setHoloOpacity(0)
+                }
+            } else if (scrollValue >= holoStart && meshRef.current?.visible) {
+                setHoloVisible(true)
+                const hOpacity = Math.min((scrollValue - holoStart) / (holoFadeEnd - holoStart), 1)
+                setHoloOpacity(hOpacity)
+            } else {
                 setHoloVisible(false)
                 setHoloOpacity(0)
             }
-        } else if (scrollValue >= holoStart && meshRef.current?.visible) {
-            setHoloVisible(true)
-            const hOpacity = Math.min((scrollValue - holoStart) / (holoFadeEnd - holoStart), 1)
-            setHoloOpacity(hOpacity)
-        } else {
-            setHoloVisible(false)
-            setHoloOpacity(0)
         }
     })
 

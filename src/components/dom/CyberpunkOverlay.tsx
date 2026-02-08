@@ -15,7 +15,7 @@ import { getCalloutVisibility, featurePoints, type FeaturePoint } from '@/config
 
 export default function CyberpunkOverlay() {
     const { springProgress } = useScrollAnimation()
-    const { setLocked, resetRotation, projectionStarted, resetProjection } = useScrollContext()
+    const { setLocked, resetRotation, projectionStarted, resetProjection, setCurrentStage } = useScrollContext()
     const { playSound, playAudioVisBgm, stopAudioVisBgm } = useAudio()
     const [isInitialized, setIsInitialized] = useState(false)
     const [bgOpacity, setBgOpacity] = useState(0)
@@ -126,6 +126,9 @@ export default function CyberpunkOverlay() {
     useMotionValueEvent(springProgress, "change", (latest) => {
         const rawProgress = (latest * 1000) / totalPageHeightVh
         const currentStage = getCurrentStageName(rawProgress)
+
+        // Update current stage in context (triggers rotation reset if needed)
+        setCurrentStage(currentStage)
 
         // 更新液態階段狀態（用於滑鼠互動音效）
         setIsInLiquidPhase(['liquid', 'teardrop', 'bounce', 'glass', 'rgbGlow'].includes(currentStage))

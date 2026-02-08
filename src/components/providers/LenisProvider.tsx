@@ -21,6 +21,9 @@ interface ScrollContextType {
     projectionStarted: boolean
     onProjectionStart: () => void
     resetProjection: () => void
+    currentStage: string
+    setCurrentStage: (stage: string) => void
+    manualResetTrigger: number
 }
 
 const ScrollContext = createContext<ScrollContextType>({
@@ -33,6 +36,9 @@ const ScrollContext = createContext<ScrollContextType>({
     projectionStarted: false,
     onProjectionStart: () => { },
     resetProjection: () => { },
+    currentStage: '',
+    setCurrentStage: () => { },
+    manualResetTrigger: 0,
 })
 
 export const useScrollContext = () => useContext(ScrollContext)
@@ -51,6 +57,23 @@ export default function LenisProvider({
     const [isLocked, setIsLocked] = useState(false)
     const [shouldResetRotation, setShouldResetRotation] = useState(false)
     const [projectionStarted, setProjectionStarted] = useState(false)
+    const [currentStage, setCurrentStageState] = useState('')
+
+    // Reset manual rotation when stage changes (if needed)
+    // We expose a specific trigger for components to listen to
+    const [manualResetTrigger, setManualResetTrigger] = useState(0)
+
+    const setCurrentStage = useCallback((stage: string) => {
+        setCurrentStageState(prev => {
+            if (prev !== stage) {
+                // When stage changes, trigger manual rotation reset
+                // This is a signal for GlassWaterDrop to smoothly zero out manual rotation
+                setManualResetTrigger(t => t + 1)
+                return stage
+            }
+            return prev
+        })
+    }, [])
 
     const resetRotation = useCallback(() => {
         setShouldResetRotation(true)
@@ -122,8 +145,14 @@ export default function LenisProvider({
             clearResetFlag,
             projectionStarted,
             onProjectionStart,
-            resetProjection
-        }}>
+            resetProjection,
+            currentStage,
+            setCurrentStage,
+            // Expose internal trigger for GlassWaterDrop (casted as any to avoid changing public type if not needed, or add to type)
+            // For now, let's add it to type if we want formal correctness, or just rely on resetRotation for now?
+            // Actually, let's use a new prop in context:
+            manualResetTrigger: manualResetTrigger
+        } as any}>
             {children}
         </ScrollContext.Provider>
     )

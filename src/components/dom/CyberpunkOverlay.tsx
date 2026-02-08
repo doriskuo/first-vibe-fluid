@@ -36,6 +36,8 @@ export default function CyberpunkOverlay() {
     const [projectionComplete, setProjectionComplete] = useState(false)
     // Portal sound state (to play tunnel sound only once)
     const [portalSoundPlayed, setPortalSoundPlayed] = useState(false)
+    // Portal exit sound state (to play starfield transition sound only once)
+    const [portalExitSoundPlayed, setPortalExitSoundPlayed] = useState(false)
     // Fluid swish sound cooldown (prevent rapid repeated plays)
     const fluidSwishCooldownRef = useRef(false)
     const [isInLiquidPhase, setIsInLiquidPhase] = useState(true)  // 液態階段偵測
@@ -152,8 +154,25 @@ export default function CyberpunkOverlay() {
             }
         }
 
+        // ===== PORTAL EXIT: 穿出隧道變星際時播放音效 =====
+        // 在 portal 階段的尾端觸發（約 95% 進度）
+        if (currentStage === 'portal') {
+            const stage = scrollConfig.stages.find(s => s.name === 'portal')
+            if (stage && stage.scroll) {
+                const [start, end] = stage.scroll
+                const stageProgress = (rawProgress - start) / (end - start)
+                // 當 portal 進度超過 98% 時觸發
+                if (stageProgress > 0.98 && !portalExitSoundPlayed) {
+                    console.log('🔊 Playing portalExit sound!')
+                    playSound('portalExit')
+                    setPortalExitSoundPlayed(true)
+                }
+            }
+        }
+
         // ===== FEATURE SHOWCASE: Update active feature callout =====
         if (currentStage === 'featureShowcase') {
+
             // Get the stage bounds from scrollConfig
             const stage = scrollConfig.stages.find(s => s.name === 'featureShowcase')
             if (stage && stage.scroll) {
@@ -209,6 +228,10 @@ export default function CyberpunkOverlay() {
             // 離開 portal 階段時重設，讓下次進入可以再播放
             if (currentStage !== 'portal') {
                 setPortalSoundPlayed(false)
+            }
+            // 離開 portal 階段時重設 portalExit 音效
+            if (currentStage !== 'portal') {
+                setPortalExitSoundPlayed(false)
             }
         }
 

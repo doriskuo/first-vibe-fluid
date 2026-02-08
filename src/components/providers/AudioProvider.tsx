@@ -36,6 +36,7 @@ const soundConfig = {
     callout: { src: '/sounds/callout.wav', volume: 0.3 },
     whoosh: { src: '/sounds/whoosh.wav', volume: 0.35 },
     portal: { src: '/sounds/tunnel.wav', volume: 0.4 },  // 進入隧道/傳送門
+    portalExit: { src: '/sounds/whoosh-tunnel.wav', volume: 0.4 },  // 穿出隧道變星際
     fluidSwish: { src: '/sounds/water-swish.wav', volume: 0.35, rate: 0.55 },  // 液態區互動（放慢播放）
 
     // 環境音效（由按鈕控制）

@@ -11,6 +11,7 @@ interface FeatureCalloutProps {
     position: { x: string, y: string }
     visible: boolean
     targetPoint?: { x: string, y: string }
+    index?: number  // For alternating top/bottom on mobile
 }
 
 /**
@@ -30,12 +31,24 @@ export default function FeatureCallout({
     description,
     position,
     visible,
-    targetPoint = { x: '50%', y: '50%' }
+    targetPoint = { x: '50%', y: '50%' },
+    index = 0
 }: FeatureCalloutProps) {
     const [blink, setBlink] = useState(true)
     const calloutRef = useRef<HTMLDivElement>(null)
     const { playSound } = useAudio()
     const hasPlayedRef = useRef(false)
+    const [isMobile, setIsMobile] = useState(false)
+
+    // 偵測手機
+    useEffect(() => {
+        const checkMobile = () => {
+            setIsMobile(window.innerWidth / window.innerHeight < 1)
+        }
+        checkMobile()
+        window.addEventListener('resize', checkMobile)
+        return () => window.removeEventListener('resize', checkMobile)
+    }, [])
 
     // 閃爍動畫
     useEffect(() => {
@@ -61,16 +74,27 @@ export default function FeatureCallout({
     const targetX = parseFloat(targetPoint.x)
     const targetY = parseFloat(targetPoint.y)
 
+    // 手機版位置：上下交替 (index 偶數=上, 奇數=下) - 靠近一點
+    const mobileY = index % 2 === 0 ? '28%' : '72%'
+    const actualY = isMobile ? mobileY : position.y
+    const actualX = isMobile ? '50%' : position.x
+
     // 判斷 callout 在左側還是右側
     // 左側 callout: 從右邊緣開始，向左展開 (transformOrigin: right)
     // 右側 callout: 從左邊緣開始，向右展開 (transformOrigin: left)
     const isLeftSide = calloutX < 50
 
     // 連結線：從 callout 靠近中心的邊緣，連到 VR 目標點
-    const lineStartX = isLeftSide ? calloutX + 10 : calloutX - 10  // 從框的內側邊緣開始
+    // 手機版使用 actualX/actualY
+    const actualCalloutX = isMobile ? 50 : calloutX
+    const actualCalloutY = isMobile ? parseFloat(mobileY) : calloutY
+    const lineStartX = isMobile ? 50 : (isLeftSide ? calloutX + 10 : calloutX - 10)
     const lineMidX = (lineStartX + targetX) / 2  // 中間轉折點
 
-    const linePath = `M ${lineStartX} ${calloutY} L ${lineMidX} ${calloutY} L ${lineMidX} ${targetY} L ${targetX} ${targetY}`
+    // 手機版：簡單直線從說明框垂直連到目標
+    const linePath = isMobile
+        ? `M ${lineStartX} ${actualCalloutY} L ${lineStartX} ${targetY} L ${targetX} ${targetY}`
+        : `M ${lineStartX} ${calloutY} L ${lineMidX} ${calloutY} L ${lineMidX} ${targetY} L ${targetX} ${targetY}`
 
     // 動畫時間配置 - 放慢讓動畫更清楚
     const timings = {
@@ -237,9 +261,12 @@ export default function FeatureCallout({
                 exit={{ opacity: 1 }}
                 style={{
                     position: 'fixed',
-                    left: position.x,
-                    top: position.y,
-                    transform: 'translate(-50%, -50%)',
+                    left: actualX,
+                    top: actualY,
+                    transform: isMobile
+                        ? 'translate(-50%, -50%) scale(0.65)'
+                        : 'translate(-50%, -50%)',
+                    transformOrigin: 'center center',
                     pointerEvents: 'none',
                     zIndex: 100,
                 }}

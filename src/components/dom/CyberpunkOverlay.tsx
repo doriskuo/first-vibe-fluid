@@ -11,7 +11,7 @@ import CyberpunkGridCanvas from './CyberpunkGridCanvas'
 import FeatureCallout from './FeatureCallout'
 import FinalLanding from './FinalLanding'
 import Navbar from './Navbar'
-import { getCalloutVisibility, type FeaturePoint } from '@/config/featureConfig'
+import { getCalloutVisibility, featurePoints, type FeaturePoint } from '@/config/featureConfig'
 
 export default function CyberpunkOverlay() {
     const { springProgress } = useScrollAnimation()
@@ -490,6 +490,7 @@ export default function CyberpunkOverlay() {
                         position={activeFeature.callout.position}
                         targetPoint={activeFeature.targetPoint}
                         visible={true}
+                        index={featurePoints.findIndex(f => f.id === activeFeature.id)}
                     />
                 )}
             </AnimatePresence>

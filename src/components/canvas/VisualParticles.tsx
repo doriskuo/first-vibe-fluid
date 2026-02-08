@@ -1,7 +1,7 @@
 'use client'
 
 import { useRef, useMemo } from 'react'
-import { useFrame } from '@react-three/fiber'
+import { useFrame, useThree } from '@react-three/fiber'
 import * as THREE from 'three'
 import { useScrollAnimation } from '@/hooks/useScrollAnimation'
 import { SimplexNoise } from 'three/examples/jsm/math/SimplexNoise.js'
@@ -22,6 +22,13 @@ export default function VisualParticles() {
     const portalEnd = 25.0    // Shortened to 25.0 per user request
 
     const { springProgress } = useScrollAnimation()
+    const { size } = useThree()
+
+    // Calculate scale factor and position for portrait screens (desktop unchanged)
+    const aspectRatio = size.width / size.height
+    const isPortrait = aspectRatio < 1
+    const groupScale = isPortrait ? Math.min(1, aspectRatio * 0.4) : 1
+    const positionY = isPortrait ? -0.2 : 0  // Move down slightly on mobile
 
     // Pre-calculate positions
     const randomPositions = useMemo(() => {
@@ -380,16 +387,18 @@ export default function VisualParticles() {
     })
 
     return (
-        <instancedMesh ref={meshRef} args={[undefined, undefined, particleCount]}>
-            <sphereGeometry args={[0.08, 8, 8]} />
-            <instancedBufferAttribute attach="instanceColor" args={[colors, 3]} />
-            <meshBasicMaterial
-                transparent
-                opacity={1}
-                toneMapped={false}
-                blending={THREE.AdditiveBlending}
-                depthWrite={false}
-            />
-        </instancedMesh>
+        <group scale={[groupScale, groupScale, groupScale]} position={[0, positionY, 0]}>
+            <instancedMesh ref={meshRef} args={[undefined, undefined, particleCount]}>
+                <sphereGeometry args={[0.08, 8, 8]} />
+                <instancedBufferAttribute attach="instanceColor" args={[colors, 3]} />
+                <meshBasicMaterial
+                    transparent
+                    opacity={1}
+                    toneMapped={false}
+                    blending={THREE.AdditiveBlending}
+                    depthWrite={false}
+                />
+            </instancedMesh>
+        </group>
     )
 }

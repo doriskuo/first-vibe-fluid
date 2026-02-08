@@ -1,7 +1,7 @@
 'use client'
 
 import { useRef, useMemo } from 'react'
-import { useFrame } from '@react-three/fiber'
+import { useFrame, useThree } from '@react-three/fiber'
 import * as THREE from 'three'
 import { useScrollAnimation } from '@/hooks/useScrollAnimation'
 import { createNoise3D } from 'simplex-noise'
@@ -14,9 +14,17 @@ export default function AudioVisualizer() {
     const bassRef = useRef<THREE.InstancedMesh>(null)
 
     const dummy = useMemo(() => new THREE.Object3D(), [])
+    const { size } = useThree()
 
     // Use shared scroll hook
     const { springProgress } = useScrollAnimation()
+
+    // Calculate from useThree's size (no extra re-renders)
+    const aspectRatio = size.width / size.height
+    const isPortrait = aspectRatio < 1
+
+    // Scale factor: reduce size on portrait screens (desktop unchanged)
+    const groupScale = isPortrait ? Math.min(1, aspectRatio * 1.3) : 1
 
     const barsPerRow = 64
     const midBarsCount = 128 // High density
@@ -216,7 +224,7 @@ export default function AudioVisualizer() {
     })
 
     return (
-        <group>
+        <group scale={[groupScale, groupScale, groupScale]}>
             {/* Treble */}
             <instancedMesh ref={trebleRef} args={[undefined, undefined, barsPerRow]}>
                 <sphereGeometry args={[0.08, 8, 8]} />

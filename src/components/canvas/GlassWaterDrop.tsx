@@ -5,6 +5,7 @@ import { useFrame } from '@react-three/fiber'
 import { MeshTransmissionMaterial, Environment } from '@react-three/drei'
 import * as THREE from 'three'
 import { useScrollAnimation } from '@/hooks/useScrollAnimation'
+import { useViewport } from '@/hooks/useViewport'
 import { useScrollContext } from '@/components/providers/LenisProvider'
 import WatchGear from './WatchGear'
 import VRHeadphones from './VRHeadphones'
@@ -50,6 +51,12 @@ export default function GlassWaterDrop() {
 
     const { getState } = useScrollAnimation()
     const { shouldResetRotation, clearResetFlag, onProjectionStart } = useScrollContext()
+    const { aspectRatio, isPortrait } = useViewport()
+
+    // Position factor: reduce horizontal movement on portrait screens
+    const posFactor = isPortrait ? Math.min(1, aspectRatio * 1.5) : 1
+    // Scale factor: reduce VR size on portrait screens
+    const scaleFactor = isPortrait ? Math.min(1, aspectRatio * 0.9 + 0.1) : 1
 
     // 拖曳旋轉狀態 (X, Y, Z 三軸)
     const [isDragging, setIsDragging] = useState(false)
@@ -255,25 +262,28 @@ export default function GlassWaterDrop() {
             const finalLandingEnd = 36.0
 
             if (scrollValue > finalLandingStart) {
-                // VR moves to center-right, faces front for product showcase
+                // VR moves to center-right (desktop) or top-center (mobile)
                 const landingProgress = Math.min(Math.max((scrollValue - finalLandingStart) / (finalLandingEnd - finalLandingStart), 0), 1)
                 const t = landingProgress * landingProgress * (3 - 2 * landingProgress) // smoothstep
 
-                // VR 位置：從朝上投影位置 → 右側（佔據右側版面70%）
+                // VR 位置：從朝上投影位置 → 右側（桌面）或上方（手機）
                 // 起點：holoPhase 結束時 posX=0, posY=-0.25, scale=0.2
-                // 終點：右側居中，適中尺寸展示
-                posX = 0.35 * t  // 移到右側（往中間靠一點）
+                // 終點：右側居中（桌面），上方居中（手機）
+                posX = isPortrait ? 0 : 0.35 * t  // 手機置中，桌面往右
 
                 // 漂浮效果：到達最終位置後加入 sine 波動
                 const time = performance.now() * 0.001  // 轉換成秒
                 const floatOffset = t > 0.9 ? Math.sin(time * 1.5) * 0.015 : 0  // 輕微上下浮動
-                posY = -0.25 + (0.25 * t) + floatOffset
+                const targetY = isPortrait ? 0.14 : 0  // 手機往上移
+                posY = -0.25 + ((0.25 + targetY) * t) + floatOffset
 
-                scale = 0.2 + (0.7 * t)  // 從 0.2 放大到 0.9（縮小一點）
+                scale = isPortrait
+                    ? 0.2 + (0.55 * t)  // 手機：從 0.2 放大到 0.75（稍大）
+                    : 0.2 + (0.7 * t)   // 桌面：從 0.2 放大到 0.9
 
                 // VR 轉回正面，但微微朝內（往左轉一點）
                 rotX = -Math.PI / 2 * (1 - t)
-                rotY = -0.2 * t  // 微微往內轉（負值 = 往左/朝向中央）
+                rotY = isPortrait ? 0 : -0.2 * t  // 手機正面，桌面微微往內轉
                 rotZ = 0
 
                 // Reset flip progress
@@ -392,11 +402,12 @@ export default function GlassWaterDrop() {
                 const t = returnProgress * returnProgress * (3 - 2 * returnProgress)
 
                 // Return to center and enlarge
-                scale = 0.35 + (t * 0.45)  // 0.35 -> 0.8 (from HUD size to showcase size)
-                posX = 0.6 * (1 - t)       // 0.6 -> 0 (return to center)
-                posY = 0.25 * (1 - t)      // 0.25 -> 0 (return to center)
-                rotZ = 0.05 * (1 - t)      // Remove tilt
-                rotY = -0.15 * (1 - t)     // Reset Y rotation
+                const startScale = isPortrait ? 0.5 : 0.35  // Match descent end scale
+                scale = startScale + (t * (0.8 - startScale))  // -> 0.8
+                posX = isPortrait ? 0 : 0.6 * (1 - t)       // From 0 or 0.6 -> 0
+                posY = 0.25 * (1 - t)                       // From 0.25 -> 0 (same for both)
+                rotZ = isPortrait ? 0 : 0.05 * (1 - t)      // Remove tilt
+                rotY = isPortrait ? 0 : -0.15 * (1 - t)     // Reset Y rotation
 
             } else if (scrollValue > descentStart) {
                 // ===== PHASE 3: Descent - move to top right corner =====
@@ -405,17 +416,21 @@ export default function GlassWaterDrop() {
                 // Smoothstep interpolation
                 const t = descentProgress * descentProgress * (3 - 2 * descentProgress)
 
-                // Target: Top Right Corner (HUD Mode)
-                scale = 1.0 - (t * 0.65) // 1.0 -> 0.35
-                posX = t * 0.6      // More Right (0 -> 0.6) - Reduced from 0.8 to prevent clipping
-                posY = t * 0.25     // Higher (0 -> 0.25) - Reduced from 0.35 to prevent clipping
+                // Target: Top (HUD Mode) - mobile only moves up, desktop moves to top-right
+                // Mobile: less shrinking so VR stays more visible
+                const shrinkAmount = isPortrait ? 0.5 : 0.65  // Mobile: 1.0->0.5, Desktop: 1.0->0.35
+                scale = 1.0 - (t * shrinkAmount)
+                posX = isPortrait ? 0 : t * 0.6      // No horizontal move on mobile
+                posY = t * 0.25                      // Move up same on both
 
                 // Slight tilt
-                rotZ = t * 0.05
-                rotY = t * -0.15
+                rotZ = isPortrait ? 0 : t * 0.05   // No tilt on mobile
+                rotY = isPortrait ? 0 : t * -0.15  // No rotation on mobile
             }
 
-            containerRef.current.scale.set(scale, scale, scale)
+            // Apply scale with portrait adjustment
+            const finalScale = scale * scaleFactor
+            containerRef.current.scale.set(finalScale, finalScale, finalScale)
             containerRef.current.position.set(posX, posY, 0)
             containerRef.current.rotation.x = rotX
             containerRef.current.rotation.z = rotZ

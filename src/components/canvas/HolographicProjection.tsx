@@ -1,7 +1,7 @@
 'use client'
 
 import { useRef, useMemo, useState, useEffect } from 'react'
-import { useFrame } from '@react-three/fiber'
+import { useFrame, useThree } from '@react-three/fiber'
 import * as THREE from 'three'
 import { RoundedBox, QuadraticBezierLine } from '@react-three/drei'
 
@@ -608,6 +608,12 @@ export default function HolographicProjection({
     const timerRef = useRef(0)
     const patternTimerRef = useRef(0)
     const projectionStartedRef = useRef(false)  // 追蹤是否已經通知過
+    const { size } = useThree()
+
+    // Mobile scale adjustment
+    const aspectRatio = size.width / size.height
+    const isPortrait = aspectRatio < 1
+    const mobileScale = isPortrait ? Math.min(1, aspectRatio * 0.8) : 1
 
     const BEAM_IN_TIME = 0.5
     const PATTERN_DURATION = 3.5
@@ -663,8 +669,16 @@ export default function HolographicProjection({
                     {currentPattern === 0 && <PatternHex opacity={contentOpacity * opacity} />}
                     {currentPattern === 1 && <PatternRadar opacity={contentOpacity * opacity} />}
                     {currentPattern === 2 && <PatternSphere opacity={contentOpacity * opacity} />}
-                    {currentPattern === 3 && <PatternGlassGlobe opacity={contentOpacity * opacity} />}
-                    {currentPattern === 4 && <PatternFlatMap opacity={contentOpacity * opacity} />}
+                    {currentPattern === 3 && (
+                        <group scale={isPortrait ? [0.4, 0.4, 0.4] : [1, 1, 1]}>
+                            <PatternGlassGlobe opacity={contentOpacity * opacity} />
+                        </group>
+                    )}
+                    {currentPattern === 4 && (
+                        <group scale={isPortrait ? [0.6, 0.6, 0.6] : [1, 1, 1]}>
+                            <PatternFlatMap opacity={contentOpacity * opacity} />
+                        </group>
+                    )}
                 </group>
             </group>
         </group>

@@ -65,14 +65,14 @@ export default function FinalLanding({ showPrompt, showCard }: FinalLandingProps
                         animate={{ opacity: 1 }}
                         exit={{ opacity: 0 }}
                         transition={{ duration: 1 }}
-                        className="fixed inset-0 z-[90] flex items-end pb-24 justify-start pl-12 md:pl-24 pointer-events-none"
+                        className="fixed inset-0 z-[90] flex items-end pb-12 md:pb-24 justify-center md:justify-start px-4 md:pl-24 pointer-events-none"
                     >
                         {/* Glassmorphism Card */}
                         <motion.div
                             initial={{ opacity: 0, x: -50 }}
                             animate={{ opacity: 1, x: 0 }}
                             transition={{ duration: 0.8, delay: 0.3 }}
-                            className="relative max-w-md pointer-events-auto"
+                            className="relative max-w-[75vw] md:max-w-md pointer-events-auto"
                         >
                             {/* Outer glow - large diffuse */}
                             <div className="absolute -inset-8 bg-gradient-to-r from-[#ff00ff]/40 via-[#8b5cf6]/30 to-[#00f3ff]/40 rounded-3xl blur-3xl opacity-60" />
@@ -81,7 +81,7 @@ export default function FinalLanding({ showPrompt, showCard }: FinalLandingProps
                             <div className="absolute -inset-2 bg-gradient-to-br from-[#00f3ff]/25 via-[#8b5cf6]/20 to-[#ff00ff]/25 rounded-xl blur-xl opacity-80" />
 
                             {/* Glass card - enhanced glassmorphism */}
-                            <div className="relative overflow-hidden rounded-lg p-6 shadow-2xl shadow-[#00f3ff]/10"
+                            <div className="relative overflow-hidden rounded-lg p-4 md:p-6 shadow-2xl shadow-[#00f3ff]/10"
                                 style={{
                                     background: 'linear-gradient(135deg, rgba(255,255,255,0.08) 0%, rgba(255,255,255,0.02) 50%, rgba(0,243,255,0.05) 100%)',
                                     backdropFilter: 'blur(5px) saturate(1.5)',
@@ -97,36 +97,36 @@ export default function FinalLanding({ showPrompt, showCard }: FinalLandingProps
                                 <div className="absolute top-0 left-4 right-4 h-[1px] bg-gradient-to-r from-[#ff00ff] via-[#8b5cf6] to-[#00f3ff]" />
 
                                 {/* Header */}
-                                <div className="mb-6">
-                                    <span className="text-[#00f3ff] text-xs font-mono tracking-[0.3em] uppercase opacity-60">
+                                <div className="mb-4 md:mb-6">
+                                    <span className="text-[#00f3ff] text-[10px] md:text-xs font-mono tracking-[0.3em] uppercase opacity-60">
                                         FLUID_DYNAMIC
                                     </span>
-                                    <h2 className="text-white text-3xl md:text-4xl font-light tracking-wide mt-2">
+                                    <h2 className="text-white text-2xl md:text-4xl font-light tracking-wide mt-1 md:mt-2">
                                         VR Headset
                                     </h2>
-                                    <p className="text-white/40 text-sm mt-1 font-light tracking-wider">
+                                    <p className="text-white/40 text-xs md:text-sm mt-1 font-light tracking-wider">
                                         NEURAL_INTERFACE_v2.0
                                     </p>
                                 </div>
 
                                 {/* Description */}
-                                <div className="mb-8 space-y-3">
-                                    <p className="text-white/60 text-sm leading-relaxed font-light">
+                                <div className="mb-6 md:mb-8 space-y-2 md:space-y-3">
+                                    <p className="text-white/60 text-xs md:text-sm leading-relaxed font-light">
                                         Experience immersive virtual reality with our next-generation neural interface.
                                         Seamlessly blend consciousness with digital realms.
                                     </p>
 
                                     {/* Feature list */}
-                                    <ul className="space-y-2 text-sm">
-                                        <li className="flex items-center gap-3 text-white/50">
+                                    <ul className="space-y-1.5 md:space-y-2 text-xs md:text-sm">
+                                        <li className="flex items-center gap-2 md:gap-3 text-white/50">
                                             <span className="w-1 h-1 bg-[#00f3ff] rounded-full" />
                                             <span>360° Spatial Audio</span>
                                         </li>
-                                        <li className="flex items-center gap-3 text-white/50">
+                                        <li className="flex items-center gap-2 md:gap-3 text-white/50">
                                             <span className="w-1 h-1 bg-[#8b5cf6] rounded-full" />
                                             <span>Neural Haptic Feedback</span>
                                         </li>
-                                        <li className="flex items-center gap-3 text-white/50">
+                                        <li className="flex items-center gap-2 md:gap-3 text-white/50">
                                             <span className="w-1 h-1 bg-[#ff00ff] rounded-full" />
                                             <span>Holographic Display</span>
                                         </li>
@@ -139,7 +139,7 @@ export default function FinalLanding({ showPrompt, showCard }: FinalLandingProps
                                     whileTap={{ scale: 0.98 }}
                                     onMouseEnter={() => playSound('hover')}
                                     onClick={() => playSound('click')}
-                                    className="relative w-full py-3 px-6 rounded overflow-hidden group"
+                                    className="relative w-full py-2.5 md:py-3 px-4 md:px-6 rounded overflow-hidden group"
                                 >
                                     {/* Button gradient background */}
                                     <div className="absolute inset-0 bg-gradient-to-r from-[#ff00ff]/20 via-[#8b5cf6]/20 to-[#00f3ff]/20 group-hover:from-[#ff00ff]/40 group-hover:via-[#8b5cf6]/40 group-hover:to-[#00f3ff]/40 transition-all duration-300" />

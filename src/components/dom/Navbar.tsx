@@ -66,12 +66,23 @@ export default function Navbar({ autoExpand = false }: NavbarProps) {
     // ===== finalLanding 模式：水平居中展開 =====
     if (autoExpand) {
         return (
-            <nav className="fixed top-0 left-0 right-0 z-[200] flex justify-center pt-8 pb-4 pointer-events-none">
+            <nav className="fixed top-0 left-0 right-0 z-[200] flex flex-col md:flex-row items-center justify-center pt-22 md:pt-8 pb-2 md:pb-4 gap-1 md:gap-4 pointer-events-none px-2">
+                {/* Logo - 第一排 on mobile */}
+                <motion.div
+                    initial={{ opacity: 0, y: -10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.4, ease: 'easeOut' }}
+                    className="text-[#00f3ff] text-[10px] md:text-sm font-mono tracking-[0.2em] md:tracking-[0.3em] uppercase pointer-events-auto"
+                >
+                    FLUID_DYNAMIC
+                </motion.div>
+
+                {/* Nav Links - 第二排 on mobile */}
                 <motion.div
                     initial={{ opacity: 0, scale: 0.8, y: -10 }}
                     animate={{ opacity: 1, scale: 1, y: 0 }}
-                    transition={{ duration: 0.4, ease: 'easeOut' }}
-                    className="flex gap-1 px-2 py-2 rounded-full pointer-events-auto"
+                    transition={{ duration: 0.4, ease: 'easeOut', delay: 0.1 }}
+                    className="flex flex-wrap justify-center gap-0.5 md:gap-1 px-1.5 md:px-2 py-1 md:py-2 rounded-full pointer-events-auto max-w-[90vw]"
                     style={glassStyle}
                 >
                     {navLinks.map((link, index) => (
@@ -79,7 +90,7 @@ export default function Navbar({ autoExpand = false }: NavbarProps) {
                             key={link.stage}
                             onClick={() => handleNavClick(link.stage, link.offsetVh)}
                             onMouseEnter={() => playSound('hover')}
-                            className="relative px-4 py-2 text-xs font-mono tracking-wider uppercase transition-all duration-300 rounded-full group"
+                            className="relative px-2 md:px-4 py-1.5 md:py-2 text-[10px] md:text-xs font-mono tracking-wider uppercase transition-all duration-300 rounded-full group"
                             style={{ color: 'rgba(255,255,255,0.6)' }}
                         >
                             <span
@@ -93,7 +104,7 @@ export default function Navbar({ autoExpand = false }: NavbarProps) {
                             </span>
                             {index < navLinks.length - 1 && (
                                 <span
-                                    className="absolute right-0 top-1/2 -translate-y-1/2 w-1 h-1 rounded-full"
+                                    className="absolute right-0 top-1/2 -translate-y-1/2 w-1 h-1 rounded-full hidden md:block"
                                     style={{
                                         background: 'linear-gradient(135deg, #ff00ff, #00f3ff)',
                                         opacity: 0.4,

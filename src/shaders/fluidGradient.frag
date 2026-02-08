@@ -21,6 +21,7 @@ uniform vec3 uCyanColor;
 uniform vec3 uPinkColor;
 uniform vec3 uLavenderColor;
 uniform vec3 uBackgroundColor;
+uniform float uScaleFactor;
 
 #define PI 3.14159265359
 
@@ -260,8 +261,8 @@ void main() {
   float wave1 = sin(angle * 4.0 + time * 0.5 + shapeMorph * 10.0) * 0.03 * waveStrength;
   float wave2 = sin(angle * 6.0 - time * 0.4 + detailMorph * 5.0) * 0.02 * waveStrength;
   
-  // Dynamic Radius: Shrink from 0.45 to 0.18 (adjusted size)
-  float baseRadius = mix(0.42, 0.18, morphProgress);
+  // Dynamic Radius: Shrink from 0.42 to 0.18 - apply scaleFactor for mobile
+  float baseRadius = mix(0.42, 0.18, morphProgress) * uScaleFactor;
   
   // Blob Radius calculation
   float blobRadius = baseRadius + (shapeMorph + detailMorph) * waveStrength + wave1 + wave2;

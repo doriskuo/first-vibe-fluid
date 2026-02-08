@@ -13,6 +13,11 @@ function FullscreenFluid() {
   const meshRef = useRef<THREE.Mesh>(null)
   const { viewport, pointer, size } = useThree()
 
+  // Calculate scale factor for portrait screens (slightly smaller than VR for better match)
+  const aspectRatio = size.width / size.height
+  const isPortrait = aspectRatio < 1
+  const scaleFactor = isPortrait ? Math.min(1, aspectRatio * 0.85 + 0.05) : 1
+
   // Hardcoded Config (Previous Leva defaults)
   const shaderConfig = {
     bounceStrength: 2.0,
@@ -60,6 +65,7 @@ function FullscreenFluid() {
     uPinkColor: { value: new THREE.Vector3(1.0, 0.55, 0.7) },
     uLavenderColor: { value: new THREE.Vector3(0.75, 0.6, 0.9) },
     uBackgroundColor: { value: new THREE.Vector3(0.97, 0.96, 0.95) },
+    uScaleFactor: { value: 1.0 },
   }), [size.width, size.height])
 
   useEffect(() => {
@@ -92,6 +98,7 @@ function FullscreenFluid() {
     material.uniforms.uRGBPulseSpeed.value = shaderConfig.rgbPulseSpeed
     material.uniforms.uRimLightStrength.value = shaderConfig.rimLightStrength
     material.uniforms.uDarkEdgeStrength.value = shaderConfig.darkEdgeStrength
+    material.uniforms.uScaleFactor.value = scaleFactor
 
     // Convert Leva RGB colors (0-255) to shader (0-1)
 

@@ -65,14 +65,14 @@ export default function FinalLanding({ showPrompt, showCard }: FinalLandingProps
                         animate={{ opacity: 1 }}
                         exit={{ opacity: 0 }}
                         transition={{ duration: 1 }}
-                        className="fixed inset-0 z-[90] flex items-end pb-12 md:pb-24 justify-center md:justify-start px-4 md:pl-24 pointer-events-none"
+                        className="fixed inset-0 z-[90] flex items-end pb-12 lg:pb-24 justify-center lg:justify-start px-4 lg:pl-24 pointer-events-none"
                     >
                         {/* Glassmorphism Card */}
                         <motion.div
                             initial={{ opacity: 0, x: -50 }}
                             animate={{ opacity: 1, x: 0 }}
                             transition={{ duration: 0.8, delay: 0.3 }}
-                            className="relative max-w-[75vw] md:max-w-md pointer-events-auto"
+                            className="relative max-w-[75vw] lg:max-w-md pointer-events-auto"
                         >
                             {/* Outer glow - large diffuse */}
                             <div className="absolute -inset-8 bg-gradient-to-r from-[#ff00ff]/40 via-[#8b5cf6]/30 to-[#00f3ff]/40 rounded-3xl blur-3xl opacity-60" />

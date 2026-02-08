@@ -28,7 +28,9 @@ export default function CyberpunkOverlay() {
     // Intro narrative layers (liquid phase)
     const [showIntroBrand, setShowIntroBrand] = useState(true)
     const [showIntroPhilosophy, setShowIntroPhilosophy] = useState(false)
-    const [showIntroPrompt, setShowIntroPrompt] = useState(true)
+    // Three-step intro prompts: tap → move → scroll → done
+    type IntroPhase = 'tap' | 'move' | 'scroll' | 'done'
+    const [introPhase, setIntroPhase] = useState<IntroPhase>('tap')
     // Final landing page (two phases)
     const [showFinalPrompt, setShowFinalPrompt] = useState(false)  // Phase 1: Prompt during projection
     const [showFinalCard, setShowFinalCard] = useState(false)      // Phase 2: Card after scroll
@@ -74,6 +76,23 @@ export default function CyberpunkOverlay() {
         window.addEventListener('mousemove', handleMouseMove)
         return () => window.removeEventListener('mousemove', handleMouseMove)
     }, [playSound, isInLiquidPhase])
+
+    // Three-step intro phase transitions (global listeners)
+    useEffect(() => {
+        const handleClick = () => {
+            if (introPhase === 'tap') setIntroPhase('move')
+        }
+        const handleMouseMove = () => {
+            if (introPhase === 'move') setIntroPhase('scroll')
+        }
+
+        window.addEventListener('click', handleClick)
+        window.addEventListener('mousemove', handleMouseMove)
+        return () => {
+            window.removeEventListener('click', handleClick)
+            window.removeEventListener('mousemove', handleMouseMove)
+        }
+    }, [introPhase])
 
     // Rotate slogans every 2.5s while brand is visible
     useEffect(() => {
@@ -282,8 +301,10 @@ export default function CyberpunkOverlay() {
         // Layer 2: Philosophy (fades in after brand fades, holds, then fades out)
         setShowIntroPhilosophy(latest >= 0.8 && latest < 1.8)
 
-        // Layer 3: Scroll prompt (visible at start, fades out as user scrolls)
-        setShowIntroPrompt(latest < 0.8)
+        // Layer 3: Intro prompts - hide when user scrolls past liquid phase
+        if (latest >= 0.8 && introPhase !== 'done') {
+            setIntroPhase('done')
+        }
 
         // ===== FINAL LANDING: Reset projection state when leaving =====
         // 離開 holographicProjection 時重設狀態（為下次使用 navbar 跳轉做準備）
@@ -366,30 +387,45 @@ export default function CyberpunkOverlay() {
                     )}
                 </AnimatePresence>
 
-                {/* Layer 3: Scroll Prompt (separate from AnimatePresence for overlay) */}
-                <AnimatePresence>
-                    {showIntroPrompt && (
+                {/* Layer 3: Three-Step Intro Prompts */}
+                <AnimatePresence mode="wait">
+                    {introPhase !== 'done' && (
                         <motion.div
-                            key="intro-prompt"
+                            key={introPhase}
                             initial={{ opacity: 0 }}
                             animate={{ opacity: 1 }}
                             exit={{ opacity: 0 }}
                             transition={{ duration: 0.5 }}
-                            className="absolute bottom-12 sm:bottom-16 flex flex-col items-center gap-3 sm:gap-4"
+                            className="absolute bottom-12 sm:bottom-16 lg:bottom-12 lg:right-12 flex flex-col items-center lg:items-end gap-3 sm:gap-4 cursor-pointer"
+                            onClick={() => {
+                                if (introPhase === 'tap') setIntroPhase('move')
+                            }}
+                            onMouseMove={() => {
+                                if (introPhase === 'move') setIntroPhase('scroll')
+                            }}
                         >
-                            {/* Mouse interaction hint */}
-                            <span className="text-gray-500/60 text-[10px] sm:text-xs tracking-[0.15em] sm:tracking-[0.2em] uppercase">
-                                Move to Flow
-                            </span>
-                            {/* Scroll hint */}
-                            <span className="text-gray-600/50 text-xs tracking-[0.3em] uppercase animate-pulse">
-                                Scroll to Feel
-                            </span>
-                            <motion.div
-                                animate={{ y: [0, 8, 0] }}
-                                transition={{ duration: 1.5, repeat: Infinity, ease: "easeInOut" }}
-                                className="w-[1px] h-8 bg-gradient-to-b from-gray-500/40 to-transparent"
-                            />
+                            {introPhase === 'tap' && (
+                                <span className="text-gray-400/60 text-xs tracking-[0.25em] uppercase animate-pulse mb-10">
+                                    Tap to Begin
+                                </span>
+                            )}
+                            {introPhase === 'move' && (
+                                <span className="text-gray-400/60 text-xs tracking-[0.25em] uppercase mb-10">
+                                    Move to Flow
+                                </span>
+                            )}
+                            {introPhase === 'scroll' && (
+                                <div className="flex flex-col items-center gap-3">
+                                    <span className="text-gray-400/60 text-xs tracking-[0.25em] uppercase animate-pulse">
+                                        Scroll to Explore
+                                    </span>
+                                    <motion.div
+                                        animate={{ y: [0, 8, 0] }}
+                                        transition={{ duration: 1.5, repeat: Infinity, ease: "easeInOut" }}
+                                        className="w-[1px] h-8 bg-gradient-to-b from-gray-500/40 to-transparent"
+                                    />
+                                </div>
+                            )}
                         </motion.div>
                     )}
                 </AnimatePresence>

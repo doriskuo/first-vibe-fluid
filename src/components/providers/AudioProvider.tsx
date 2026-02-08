@@ -12,6 +12,10 @@ interface AudioContextType {
     // 音量控制
     setVolume: (volume: number) => void
     volume: number
+    // AudioVisualizer BGM 控制（淡入淡出）
+    playAudioVisBgm: () => void
+    stopAudioVisBgm: () => void
+    setAudioVisBgmVolume: (vol: number) => void
 }
 
 const AudioContext = createContext<AudioContextType>({
@@ -19,7 +23,10 @@ const AudioContext = createContext<AudioContextType>({
     toggleMusic: () => { },
     playSound: () => { },
     setVolume: () => { },
-    volume: 0.5
+    volume: 0.5,
+    playAudioVisBgm: () => { },
+    stopAudioVisBgm: () => { },
+    setAudioVisBgmVolume: () => { },
 })
 
 export const useAudio = () => useContext(AudioContext)
@@ -41,6 +48,9 @@ const soundConfig = {
 
     // 環境音效（由按鈕控制）
     ambient: { src: '/sounds/ambient.mp3', volume: 0.1, loop: true },
+
+    // AudioVisualizer 背景音樂（跟隨三層音頻淡入淡出）
+    audioVisBgm: { src: '/sounds/bpm.wav', volume: 0.4, loop: true },
 }
 
 type SoundName = keyof typeof soundConfig
@@ -153,13 +163,42 @@ export default function AudioProvider({
         setVolumeState(Math.max(0, Math.min(1, newVolume)))
     }, [])
 
+    // AudioVisualizer BGM 控制（三層音頻背景音樂）
+    const playAudioVisBgm = useCallback(() => {
+        if (!isReady || !userInteracted) return
+        const bgm = soundsRef.current.get('audioVisBgm')
+        if (bgm && !bgm.playing()) {
+            bgm.volume(0)
+            bgm.play()
+            bgm.fade(0, 0.4, 500)  // 0.5秒淡入
+        }
+    }, [isReady, userInteracted])
+
+    const stopAudioVisBgm = useCallback(() => {
+        const bgm = soundsRef.current.get('audioVisBgm')
+        if (bgm && bgm.playing()) {
+            bgm.fade(bgm.volume(), 0, 300)  // 0.3秒淡出
+            setTimeout(() => bgm.stop(), 300)
+        }
+    }, [])
+
+    const setAudioVisBgmVolume = useCallback((vol: number) => {
+        const bgm = soundsRef.current.get('audioVisBgm')
+        if (bgm && bgm.playing()) {
+            bgm.volume(Math.max(0, Math.min(1, vol)) * 0.4)  // 最大 0.4 音量
+        }
+    }, [])
+
     return (
         <AudioContext.Provider value={{
             isMusicPlaying,
             toggleMusic,
             playSound,
             setVolume,
-            volume
+            volume,
+            playAudioVisBgm,
+            stopAudioVisBgm,
+            setAudioVisBgmVolume,
         }}>
             {children}
         </AudioContext.Provider>

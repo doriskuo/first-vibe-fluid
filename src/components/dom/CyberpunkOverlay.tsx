@@ -16,7 +16,7 @@ import { getCalloutVisibility, featurePoints, type FeaturePoint } from '@/config
 export default function CyberpunkOverlay() {
     const { springProgress } = useScrollAnimation()
     const { setLocked, resetRotation, projectionStarted, resetProjection } = useScrollContext()
-    const { playSound } = useAudio()
+    const { playSound, playAudioVisBgm, stopAudioVisBgm } = useAudio()
     const [isInitialized, setIsInitialized] = useState(false)
     const [bgOpacity, setBgOpacity] = useState(0)
     const [uiVisible, setUiVisible] = useState(false)
@@ -41,6 +41,8 @@ export default function CyberpunkOverlay() {
     // Fluid swish sound cooldown (prevent rapid repeated plays)
     const fluidSwishCooldownRef = useRef(false)
     const [isInLiquidPhase, setIsInLiquidPhase] = useState(true)  // 液態階段偵測
+    // AudioVisualizer BGM playing state
+    const audioVisBgmPlayingRef = useRef(false)
     // Rotating slogans carousel
     const [sloganIndex, setSloganIndex] = useState(0)
     const slogans = [
@@ -108,6 +110,44 @@ export default function CyberpunkOverlay() {
 
         // 更新液態階段狀態（用於滑鼠互動音效）
         setIsInLiquidPhase(['liquid', 'teardrop', 'bounce', 'glass', 'rgbGlow'].includes(currentStage))
+
+        // ===== AUDIO VISUALIZER BGM: 三層音頻區背景音樂 =====
+        const isInAudioVisStage = ['theaterSpace', 'audioSim', 'visualSim'].includes(currentStage)
+
+        // 檢查是否應該開始播放（在 theaterSpace 50% 進度後）
+        let shouldPlay = false
+        if (currentStage === 'theaterSpace') {
+            const stage = scrollConfig.stages.find(s => s.name === 'theaterSpace')
+            if (stage && stage.scroll) {
+                const [start, end] = stage.scroll
+                const stageProgress = (rawProgress - start) / (end - start)
+                shouldPlay = stageProgress > 0.5  // 50% 進度後才開始
+            }
+        } else if (['audioSim', 'visualSim'].includes(currentStage)) {
+            shouldPlay = true  // audioSim/visualSim 直接播放
+        }
+
+        // 檢查是否應該提前淡出（在 visualSim 80% 進度時）
+        let shouldFadeOut = false
+        if (currentStage === 'visualSim') {
+            const stage = scrollConfig.stages.find(s => s.name === 'visualSim')
+            if (stage && stage.scroll) {
+                const [start, end] = stage.scroll
+                const stageProgress = (rawProgress - start) / (end - start)
+                shouldFadeOut = stageProgress > 0.3  // 30% 就開始淡出
+            }
+        }
+
+        if (shouldPlay && !shouldFadeOut && !audioVisBgmPlayingRef.current) {
+            console.log('🎵 Playing audioVisBgm!')
+            playAudioVisBgm()
+            audioVisBgmPlayingRef.current = true
+        } else if ((!shouldPlay || shouldFadeOut) && audioVisBgmPlayingRef.current) {
+            console.log('🎵 Stopping audioVisBgm!')
+            stopAudioVisBgm()
+            audioVisBgmPlayingRef.current = false
+        }
+
 
         // Show Black Background (Patterns) - IMMEDIATE
         if (['cyberpunkEntry', 'descent', 'theaterSpace', 'audioSim', 'visualSim', 'returnToCenter', 'centerLock', 'featureShowcase'].includes(currentStage)) {

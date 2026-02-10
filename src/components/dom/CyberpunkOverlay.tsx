@@ -135,8 +135,6 @@ export default function CyberpunkOverlay() {
         s.setIsInLiquidPhase(['liquid', 'teardrop', 'bounce', 'glass', 'rgbGlow'].includes(currentStage))
 
         // ===== AUDIO VISUALIZER BGM: 三層音頻區背景音樂 =====
-        const isInAudioVisStage = ['theaterSpace', 'audioSim', 'visualSim'].includes(currentStage)
-
         // 檢查是否應該開始播放（在 theaterSpace 50% 進度後）
         let shouldPlay = false
         if (currentStage === 'theaterSpace') {

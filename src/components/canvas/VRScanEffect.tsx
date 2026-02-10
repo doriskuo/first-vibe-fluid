@@ -3,6 +3,7 @@
 import { useRef, useMemo } from 'react'
 import { useFrame } from '@react-three/fiber'
 import * as THREE from 'three'
+import { useVRStore } from '@/stores/vrStore'
 
 // Shader：短光束從左向右飛過（發光 + 無黑邊）
 const vertexShader = `
@@ -91,15 +92,14 @@ void main() {
 
 interface VRScanEffectProps {
     geometry: THREE.BufferGeometry
-    visible: boolean
     parentRotation: THREE.Euler
 }
 
 export default function VRScanEffect({
     geometry,
-    visible,
     parentRotation
 }: VRScanEffectProps) {
+    const visible = useVRStore(s => s.scanVisible)
     const meshRef = useRef<THREE.Mesh>(null)
     const materialRef = useRef<THREE.ShaderMaterial>(null)
 

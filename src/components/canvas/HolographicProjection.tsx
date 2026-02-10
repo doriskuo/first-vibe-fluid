@@ -4,6 +4,7 @@ import { useRef, useMemo, useState, useEffect } from 'react'
 import { useFrame, useThree } from '@react-three/fiber'
 import * as THREE from 'three'
 import { RoundedBox, QuadraticBezierLine } from '@react-three/drei'
+import { useVRStore } from '@/stores/vrStore'
 
 // ==================== [組件] 玻璃面板 (Premium Crystal) ====================
 function GlassPanel({
@@ -587,20 +588,15 @@ function LightBeam({ opacity = 1, height = 0.25 }: { opacity?: number, height?: 
 
 // ==================== Main Export ====================
 interface HolographicProjectionProps {
-    visible: boolean
-    opacity?: number
-    vrRotation?: THREE.Euler
-    vrFlipProgress?: number
     onProjectionStart?: () => void  // 投影開始時的回調
 }
 
 export default function HolographicProjection({
-    visible,
-    opacity = 1,
-    vrRotation,
-    vrFlipProgress = 1,
     onProjectionStart
 }: HolographicProjectionProps) {
+    const visible = useVRStore(s => s.holoVisible)
+    const opacity = useVRStore(s => s.holoOpacity)
+    const vrFlipProgress = useVRStore(s => s.vrFlipProgress)
     const groupRef = useRef<THREE.Group>(null)
     const [currentPattern, setCurrentPattern] = useState(0) // 0=Hex, 1=Radar, 2=Sphere, 3=GlassGlobe, 4=FlatMap
     const [beamProgress, setBeamProgress] = useState(0)

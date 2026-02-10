@@ -3,11 +3,7 @@
 import { useRef, useMemo } from 'react'
 import { useFrame } from '@react-three/fiber'
 import * as THREE from 'three'
-
-interface CenterLockEffectProps {
-    visible: boolean
-    progress: number  // 0 -> 1 during centerLock phase
-}
+import { useVRStore } from '@/stores/vrStore'
 
 /**
  * CenterLockEffect - 歸位特效
@@ -17,7 +13,9 @@ interface CenterLockEffectProps {
  * 2. 科技方框線條浮出並消失
  * 3. 角落閃光點
  */
-export default function CenterLockEffect({ visible, progress }: CenterLockEffectProps) {
+export default function CenterLockEffect() {
+    const visible = useVRStore(s => s.lockEffectVisible)
+    const progress = useVRStore(s => s.lockEffectProgress)
     const groupRef = useRef<THREE.Group>(null)
     const scanLineRef = useRef<THREE.Mesh>(null)
     const frameRefs = useRef<THREE.LineSegments[]>([])

@@ -3,10 +3,9 @@
 import { useRef, useMemo } from 'react'
 import { useFrame } from '@react-three/fiber'
 import * as THREE from 'three'
+import { useVRStore } from '@/stores/vrStore'
 
 interface EarcupParticlesProps {
-    visible: boolean
-    opacity: number
     parentRotation: THREE.Euler
 }
 
@@ -80,10 +79,10 @@ void main() {
 `
 
 export default function EarcupParticles({
-    visible,
-    opacity,
     parentRotation
 }: EarcupParticlesProps) {
+    const visible = useVRStore(s => s.particlesVisible)
+    const opacity = useVRStore(s => s.particlesOpacity)
     const groupRef = useRef<THREE.Group>(null)
     const leftPointsRef = useRef<THREE.Points>(null)
     const rightPointsRef = useRef<THREE.Points>(null)

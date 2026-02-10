@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useScrollContext } from '@/components/providers/LenisProvider'
+import { useScrollStore } from '@/stores/scrollStore'
 import { useAudio } from '@/components/providers/AudioProvider'
 import { computedStages } from '@/config/scrollTimeline'
 
@@ -22,7 +23,8 @@ interface NavbarProps {
 }
 
 export default function Navbar({ autoExpand = false }: NavbarProps) {
-    const { lenis, setLocked } = useScrollContext()
+    const { lenis } = useScrollContext()
+    const setLocked = useScrollStore(s => s.setLocked)
     const { playSound } = useAudio()
     const [isExpanded, setIsExpanded] = useState(autoExpand)
 

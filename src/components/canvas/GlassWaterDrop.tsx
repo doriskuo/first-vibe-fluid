@@ -1,17 +1,17 @@
 'use client'
 
-import { useRef, useMemo, useState, useEffect, useCallback } from 'react'
+import { useRef, useMemo, useEffect, useCallback } from 'react'
 import { useFrame } from '@react-three/fiber'
 import { MeshTransmissionMaterial, Environment } from '@react-three/drei'
 import * as THREE from 'three'
 import { useScrollAnimation } from '@/hooks/useScrollAnimation'
 import { useViewport } from '@/hooks/useViewport'
-import { useScrollContext } from '@/components/providers/LenisProvider'
+import { useScrollStore } from '@/stores/scrollStore'
+import { useVRStore } from '@/stores/vrStore'
 import WatchGear from './WatchGear'
 import VRHeadphones from './VRHeadphones'
 import VRScanEffect from './VRScanEffect'
 import EarcupParticles from './EarcupParticles'
-import HolographicCircuit from './HolographicCircuit'
 import HolographicProjection from './HolographicProjection'
 import CenterLockEffect from './CenterLockEffect'
 import { getCalloutVisibility, featurePoints } from '@/config/featureConfig'
@@ -50,7 +50,10 @@ export default function GlassWaterDrop() {
     const rightGear4Ref = useRef<THREE.Group>(null)
 
     const { getState } = useScrollAnimation()
-    const { shouldResetRotation, clearResetFlag, onProjectionStart, manualResetTrigger } = useScrollContext()
+    const shouldResetRotation = useScrollStore(s => s.shouldResetRotation)
+    const clearResetFlag = useScrollStore(s => s.clearResetFlag)
+    const onProjectionStart = useScrollStore(s => s.onProjectionStart)
+    const manualResetTrigger = useScrollStore(s => s.manualResetTrigger)
     const { aspectRatio, isPortrait } = useViewport()
 
     // Position factor: reduce horizontal movement on portrait screens
@@ -58,10 +61,13 @@ export default function GlassWaterDrop() {
     // Scale factor: reduce VR size on portrait screens
     const scaleFactor = isPortrait ? Math.min(1, aspectRatio * 0.9 + 0.1) : 1
 
-    // 拖曳旋轉狀態 (X, Y, Z 三軸) - 這是「手動偏移量」
-    const [isDragging, setIsDragging] = useState(false)
-    const [manualRotation, setManualRotation] = useState({ x: 0, y: 0, z: 0 })
-    const [isResetting, setIsResetting] = useState(false) // Track if reset animation is in progress
+    // 拖曳旋轉狀態 — 從 vrStore 讀取
+    const isDragging = useVRStore(s => s.isDragging)
+    const manualRotation = useVRStore(s => s.manualRotation)
+    const isResetting = useVRStore(s => s.isResetting)
+    const setDragging = useVRStore(s => s.setDragging)
+    const setManualRotation = useVRStore(s => s.setManualRotation)
+    const setIsResetting = useVRStore(s => s.setIsResetting)
     const lastPointer = useRef({ x: 0, y: 0 })
 
     // [New] 自動重置手動旋轉 (當階段改變時)
@@ -91,32 +97,8 @@ export default function GlassWaterDrop() {
         }
     }, [manualResetTrigger])
 
-    // VR 耳罩狀態
-    const [headphonesVisible, setHeadphonesVisible] = useState(false)
-    const [headphonesOpacity, setHeadphonesOpacity] = useState(0)
+    // VR 子元件狀態 — 已遷移到 vrStore，useFrame 中使用 getState() 直接操作
     const headphonesRotation = useRef(new THREE.Euler())
-
-    // 掃描效果狀態
-    const [scanVisible, setScanVisible] = useState(false)
-    const [scanProgress, setScanProgress] = useState(0)
-
-    // 粒子效果狀態
-    const [particlesVisible, setParticlesVisible] = useState(false)
-    const [particlesOpacity, setParticlesOpacity] = useState(0)
-
-    // 全息電路狀態
-    const [circuitVisible, setCircuitVisible] = useState(false)
-    const [circuitOpacity, setCircuitOpacity] = useState(0)
-    const [circuitGrowth, setCircuitGrowth] = useState(0)
-
-    // Center Lock 歸位特效狀態
-    const [lockEffectVisible, setLockEffectVisible] = useState(false)
-    const [lockEffectProgress, setLockEffectProgress] = useState(0)
-
-    // 全息投影狀態（VR朝上投射）
-    const [holoVisible, setHoloVisible] = useState(false)
-    const [holoOpacity, setHoloOpacity] = useState(0)
-    const [vrFlipProgress, setVrFlipProgress] = useState(0)
 
     // ===== Rotation Reset Animation (Legacy global reset, keep if still used elsewhere) =====
     useEffect(() => {
@@ -224,17 +206,18 @@ export default function GlassWaterDrop() {
 
             // 垂直拖曳 → X 軸旋轉（前後翻轉）
             // 水平拖曳 → Z 軸旋轉（左右傾斜）
-            setManualRotation(prev => ({
+            const prev = useVRStore.getState().manualRotation
+            setManualRotation({
                 x: prev.x + deltaY * 0.01,
                 y: prev.y + deltaX * 0.005,  // Y 軸也轉一點點
                 z: prev.z + deltaX * 0.01    // Z 軸傾斜
-            }))
+            })
 
             lastPointer.current = { x: e.clientX, y: e.clientY }
         }
 
         const handleMouseUp = () => {
-            setIsDragging(false)
+            setDragging(false)
         }
 
         if (isDragging) {
@@ -314,10 +297,10 @@ export default function GlassWaterDrop() {
                 rotZ = 0
 
                 // Reset flip progress
-                setVrFlipProgress(1 - t)
+                useVRStore.getState().updateVisibility({ vrFlipProgress: 1 - t })
 
                 // Hide lock effect
-                setLockEffectVisible(false)
+                useVRStore.getState().updateVisibility({ lockEffectVisible: false })
 
             } else if (scrollValue > holoPhaseStart) {
                 // VR 翻轉朝上，作為投影儀
@@ -325,7 +308,7 @@ export default function GlassWaterDrop() {
                 const t = holoProgress * holoProgress * (3 - 2 * holoProgress) // smoothstep
 
                 // 設定 VR 翻轉進度（傳給 HolographicProjection）
-                setVrFlipProgress(t)
+                useVRStore.getState().updateVisibility({ vrFlipProgress: t })
 
                 // VR 位置：中央偏下
                 posX = 0
@@ -338,7 +321,7 @@ export default function GlassWaterDrop() {
                 rotZ = 0
 
                 // Hide lock effect
-                setLockEffectVisible(false)
+                useVRStore.getState().updateVisibility({ lockEffectVisible: false })
 
             } else if (scrollValue > showcaseStart) {
                 // ===== PHASE 4C: Feature Showcase - VR rotates with feature-specific zoom =====
@@ -388,7 +371,7 @@ export default function GlassWaterDrop() {
                 }
 
                 // Hide lock effect
-                setLockEffectVisible(false)
+                useVRStore.getState().updateVisibility({ lockEffectVisible: false })
 
             } else if (scrollValue > lockStart) {
                 // ===== PHASE 4B: Center Lock - VR settles with subtle breathing/pulse =====
@@ -413,12 +396,12 @@ export default function GlassWaterDrop() {
                 // - 15% to 55%: Effect plays at NORMAL speed (40% of duration = same as original 500vh would give)
                 // - 55% to 100%: Pure static pause before rotation
                 if (lockProgress > 0.15 && lockProgress < 0.55) {
-                    setLockEffectVisible(true)
-                    // Remap 0.15->0.55 to 0->1 for full speed effect
-                    const effectProgress = (lockProgress - 0.15) / 0.4
-                    setLockEffectProgress(effectProgress)
+                    useVRStore.getState().updateVisibility({
+                        lockEffectVisible: true,
+                        lockEffectProgress: (lockProgress - 0.15) / 0.4,
+                    })
                 } else {
-                    setLockEffectVisible(false)
+                    useVRStore.getState().updateVisibility({ lockEffectVisible: false })
                 }
 
             } else if (scrollValue > returnStart) {
@@ -628,52 +611,48 @@ export default function GlassWaterDrop() {
             if (meshRef.current) {
                 const morphT = Math.min(Math.max((scrollValue - 2.4) / 0.5, 0), 1)
                 const shouldShow = morphT >= 1 && meshRef.current.visible
-                setHeadphonesVisible(shouldShow)
-                if (materialRef.current) {
-                    setHeadphonesOpacity(materialRef.current.opacity)
-                }
+                useVRStore.getState().updateVisibility({
+                    headphonesVisible: shouldShow,
+                    headphonesOpacity: materialRef.current ? materialRef.current.opacity : 0,
+                })
                 headphonesRotation.current.copy(meshRef.current.rotation)
             }
 
             // ===== 掃描效果 (scrollValue 4.5+ 持續顯示) =====
             const scanStart = 4.5
-            if (scrollValue >= scanStart && meshRef.current?.visible) {
-                setScanVisible(true)
-            } else {
-                setScanVisible(false)
-            }
-
-            // DEBUG: Log scroll and visibility state
-            if (scrollValue > 4.0) {
-                console.log('scrollValue:', scrollValue.toFixed(2), 'meshVisible:', meshRef.current?.visible)
-            }
+            useVRStore.getState().updateVisibility({
+                scanVisible: scrollValue >= scanStart && !!meshRef.current?.visible,
+            })
 
             // ===== 粒子效果 (scrollValue 4.8+) =====
             const particleStart = 4.8
             if (scrollValue >= particleStart && meshRef.current?.visible) {
-                setParticlesVisible(true)
-                const pOpacity = Math.min((scrollValue - particleStart) / 0.3, 1)
-                setParticlesOpacity(pOpacity)
+                useVRStore.getState().updateVisibility({
+                    particlesVisible: true,
+                    particlesOpacity: Math.min((scrollValue - particleStart) / 0.3, 1),
+                })
             } else {
-                setParticlesVisible(false)
-                setParticlesOpacity(0)
+                useVRStore.getState().updateVisibility({
+                    particlesVisible: false,
+                    particlesOpacity: 0,
+                })
             }
 
             // ===== 全息電路 (scrollValue 5.0+) =====
             const circuitStart = 5.0
             const circuitGrowEnd = 5.8
             if (scrollValue >= circuitStart && meshRef.current?.visible) {
-                setCircuitVisible(true)
-                const cOpacity = Math.min((scrollValue - circuitStart) / 0.3, 1)
-                setCircuitOpacity(cOpacity)
-
-                // 電路生長進度
-                const growth = Math.min(Math.max((scrollValue - circuitStart) / (circuitGrowEnd - circuitStart), 0), 1)
-                setCircuitGrowth(growth)
+                useVRStore.getState().updateVisibility({
+                    circuitVisible: true,
+                    circuitOpacity: Math.min((scrollValue - circuitStart) / 0.3, 1),
+                    circuitGrowth: Math.min(Math.max((scrollValue - circuitStart) / (circuitGrowEnd - circuitStart), 0), 1),
+                })
             } else {
-                setCircuitVisible(false)
-                setCircuitOpacity(0)
-                setCircuitGrowth(0)
+                useVRStore.getState().updateVisibility({
+                    circuitVisible: false,
+                    circuitOpacity: 0,
+                    circuitGrowth: 0,
+                })
             }
 
             // ===== 全息投影 (scrollValue 32.0+ 之後，VR 朝上投射) =====
@@ -683,23 +662,19 @@ export default function GlassWaterDrop() {
             const holoFadeOutEnd = 35.5
 
             if (scrollValue >= holoFadeOutStart && meshRef.current?.visible) {
-                // Fade out projection during finalLanding
-                setHoloVisible(true)
                 const fadeOutProgress = Math.min((scrollValue - holoFadeOutStart) / (holoFadeOutEnd - holoFadeOutStart), 1)
-                setHoloOpacity(1 - fadeOutProgress)
-
-                // Hide completely after fade out
                 if (fadeOutProgress >= 1) {
-                    setHoloVisible(false)
-                    setHoloOpacity(0)
+                    useVRStore.getState().updateVisibility({ holoVisible: false, holoOpacity: 0 })
+                } else {
+                    useVRStore.getState().updateVisibility({ holoVisible: true, holoOpacity: 1 - fadeOutProgress })
                 }
             } else if (scrollValue >= holoStart && meshRef.current?.visible) {
-                setHoloVisible(true)
-                const hOpacity = Math.min((scrollValue - holoStart) / (holoFadeEnd - holoStart), 1)
-                setHoloOpacity(hOpacity)
+                useVRStore.getState().updateVisibility({
+                    holoVisible: true,
+                    holoOpacity: Math.min((scrollValue - holoStart) / (holoFadeEnd - holoStart), 1),
+                })
             } else {
-                setHoloVisible(false)
-                setHoloOpacity(0)
+                useVRStore.getState().updateVisibility({ holoVisible: false, holoOpacity: 0 })
             }
         }
     })
@@ -707,9 +682,9 @@ export default function GlassWaterDrop() {
     // 點擊水滴開始拖曳
     const handlePointerDown = useCallback((e: any) => {
         e.stopPropagation()
-        setIsDragging(true)
+        setDragging(true)
         lastPointer.current = { x: e.clientX, y: e.clientY }
-    }, [])
+    }, [setDragging])
 
     return (
         <>
@@ -983,45 +958,31 @@ export default function GlassWaterDrop() {
 
                 {/* VR 耳罩 - 左右兩側 */}
                 <VRHeadphones
-                    visible={headphonesVisible}
                     parentRotation={headphonesRotation.current}
-                    opacity={headphonesOpacity}
                 />
 
                 {/* 掃描效果 */}
                 <VRScanEffect
                     geometry={geometry}
-                    visible={scanVisible}
                     parentRotation={headphonesRotation.current}
                 />
 
                 {/* 耳罩粒子效果 */}
                 <EarcupParticles
-                    visible={particlesVisible}
-                    opacity={particlesOpacity}
                     parentRotation={headphonesRotation.current}
                 />
 
                 {/* 全息電路板 - 暫時移除 */}
                 {/* <HolographicCircuit
-                    visible={circuitVisible}
-                    opacity={circuitOpacity}
-                    growth={circuitGrowth}
                     parentRotation={headphonesRotation.current}
                 /> */}
 
                 {/* Center Lock 歸位特效 */}
-                <CenterLockEffect
-                    visible={lockEffectVisible}
-                    progress={lockEffectProgress}
-                />
+                <CenterLockEffect />
             </group>
 
             {/* 全息投影 - 獨立於 VR，在世界座標上方 */}
             <HolographicProjection
-                visible={holoVisible}
-                opacity={holoOpacity}
-                vrFlipProgress={vrFlipProgress}
                 onProjectionStart={onProjectionStart}
             />
         </>

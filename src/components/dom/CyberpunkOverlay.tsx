@@ -1,8 +1,9 @@
 'use client'
 
-import { useEffect, useState, useRef } from 'react'
+import { useEffect, useRef } from 'react'
 import { useScrollAnimation } from '@/hooks/useScrollAnimation'
-import { useScrollContext } from '@/components/providers/LenisProvider'
+import { useScrollStore } from '@/stores/scrollStore'
+import { useUIStore } from '@/stores/uiStore'
 import { useAudio } from '@/components/providers/AudioProvider'
 import { totalPageHeightVh, getCurrentStageName, scrollConfig } from '@/config/scrollTimeline'
 import { motion, useMotionValueEvent, AnimatePresence } from 'framer-motion'
@@ -13,47 +14,46 @@ import FinalLanding from './FinalLanding'
 import Navbar from './Navbar'
 import { getCalloutVisibility, featurePoints, type FeaturePoint } from '@/config/featureConfig'
 
+const slogans = [
+    'Flow with Possibility',
+    'Consciousness in Motion',
+    'Fluidity is Freedom',
+    'Where Thoughts Take Shape',
+    'Let It Flow'
+]
+
 export default function CyberpunkOverlay() {
     const { springProgress } = useScrollAnimation()
-    const { setLocked, resetRotation, projectionStarted, resetProjection, setCurrentStage } = useScrollContext()
+    // scrollStore selectors
+    const setLocked = useScrollStore(s => s.setLocked)
+    const resetRotation = useScrollStore(s => s.resetRotation)
+    const projectionStarted = useScrollStore(s => s.projectionStarted)
+    const resetProjection = useScrollStore(s => s.resetProjection)
+    const setCurrentStage = useScrollStore(s => s.setCurrentStage)
+    // uiStore selectors — 僅 JSX 需要讀取的狀態
+    const isInitialized = useUIStore(s => s.isInitialized)
+    const bgOpacity = useUIStore(s => s.bgOpacity)
+    const uiVisible = useUIStore(s => s.uiVisible)
+    const activeFeature = useUIStore(s => s.activeFeature)
+    const calloutVisible = useUIStore(s => s.calloutVisible)
+    const calloutPhase = useUIStore(s => s.calloutPhase)
+    const vibeTextVisible = useUIStore(s => s.vibeTextVisible)
+    const vibeText = useUIStore(s => s.vibeText)
+    const showIntroBrand = useUIStore(s => s.showIntroBrand)
+    const showIntroPhilosophy = useUIStore(s => s.showIntroPhilosophy)
+    const introPhase = useUIStore(s => s.introPhase)
+    const showFinalPrompt = useUIStore(s => s.showFinalPrompt)
+    const showFinalCard = useUIStore(s => s.showFinalCard)
+    const projectionComplete = useUIStore(s => s.projectionComplete)
+    const isInLiquidPhase = useUIStore(s => s.isInLiquidPhase)
+    const sloganIndex = useUIStore(s => s.sloganIndex)
+    // uiStore actions — useMotionValueEvent 中用 getState() 調用
+    const ui = useUIStore
+
     const { playSound, playAudioVisBgm, stopAudioVisBgm } = useAudio()
-    const [isInitialized, setIsInitialized] = useState(false)
-    const [bgOpacity, setBgOpacity] = useState(0)
-    const [uiVisible, setUiVisible] = useState(false)
-    const [activeFeature, setActiveFeature] = useState<FeaturePoint | null>(null)
-    const [calloutVisible, setCalloutVisible] = useState(false)
-    const [calloutPhase, setCalloutPhase] = useState<'entering' | 'visible' | 'exiting' | 'hidden'>('hidden')
-    const [vibeTextVisible, setVibeTextVisible] = useState(false)
-    const [vibeText, setVibeText] = useState('')
-    // Intro narrative layers (liquid phase)
-    const [showIntroBrand, setShowIntroBrand] = useState(true)
-    const [showIntroPhilosophy, setShowIntroPhilosophy] = useState(false)
-    // Three-step intro prompts: tap → move → scroll → done
-    type IntroPhase = 'tap' | 'move' | 'scroll' | 'done'
-    const [introPhase, setIntroPhase] = useState<IntroPhase>('tap')
-    // Final landing page (two phases)
-    const [showFinalPrompt, setShowFinalPrompt] = useState(false)  // Phase 1: Prompt during projection
-    const [showFinalCard, setShowFinalCard] = useState(false)      // Phase 2: Card after scroll
-    // Projection complete state (used to ensure timer only runs once)
-    const [projectionComplete, setProjectionComplete] = useState(false)
-    // Portal sound state (to play tunnel sound only once)
-    const [portalSoundPlayed, setPortalSoundPlayed] = useState(false)
-    // Portal exit sound state (to play starfield transition sound only once)
-    const [portalExitSoundPlayed, setPortalExitSoundPlayed] = useState(false)
-    // Fluid swish sound cooldown (prevent rapid repeated plays)
+    // Refs — 不需進 store 的純計時/追蹤值
     const fluidSwishCooldownRef = useRef(false)
-    const [isInLiquidPhase, setIsInLiquidPhase] = useState(true)  // 液態階段偵測
-    // AudioVisualizer BGM playing state
     const audioVisBgmPlayingRef = useRef(false)
-    // Rotating slogans carousel
-    const [sloganIndex, setSloganIndex] = useState(0)
-    const slogans = [
-        'Flow with Possibility',
-        'Consciousness in Motion',
-        'Fluidity is Freedom',
-        'Where Thoughts Take Shape',
-        'Let It Flow'
-    ]
 
     // Handle mouse move on liquid phase - play swish sound (using window event listener)
     useEffect(() => {
@@ -80,10 +80,10 @@ export default function CyberpunkOverlay() {
     // Three-step intro phase transitions (global listeners)
     useEffect(() => {
         const handleClick = () => {
-            if (introPhase === 'tap') setIntroPhase('move')
+            if (ui.getState().introPhase === 'tap') ui.getState().setIntroPhase('move')
         }
         const handleMouseMove = () => {
-            if (introPhase === 'move') setIntroPhase('scroll')
+            if (ui.getState().introPhase === 'move') ui.getState().setIntroPhase('scroll')
         }
 
         window.addEventListener('click', handleClick)
@@ -92,16 +92,16 @@ export default function CyberpunkOverlay() {
             window.removeEventListener('click', handleClick)
             window.removeEventListener('mousemove', handleMouseMove)
         }
-    }, [introPhase])
+    }, [])
 
     // Rotate slogans every 2.5s while brand is visible
     useEffect(() => {
         if (!showIntroBrand) return
         const interval = setInterval(() => {
-            setSloganIndex(prev => (prev + 1) % slogans.length)
+            ui.getState().nextSlogan(slogans.length)
         }, 2500)
         return () => clearInterval(interval)
-    }, [showIntroBrand, slogans.length])
+    }, [showIntroBrand])
 
     // 投影鎖定：當投影真正開始時（從 HolographicProjection 觸發）鎖住滾輪，20秒後解鎖顯示提示
     useEffect(() => {
@@ -114,8 +114,8 @@ export default function CyberpunkOverlay() {
 
             // 20秒後解鎖並顯示提示
             const timer = setTimeout(() => {
-                setProjectionComplete(true)
-                setShowFinalPrompt(true)
+                ui.getState().setProjectionComplete(true)
+                ui.getState().setShowFinalPrompt(true)
                 setLocked(false)
             }, 20000)  // 20秒投影時間
 
@@ -126,12 +126,13 @@ export default function CyberpunkOverlay() {
     useMotionValueEvent(springProgress, "change", (latest) => {
         const rawProgress = (latest * 1000) / totalPageHeightVh
         const currentStage = getCurrentStageName(rawProgress)
+        const s = ui.getState()
 
         // Update current stage in context (triggers rotation reset if needed)
         setCurrentStage(currentStage)
 
         // 更新液態階段狀態（用於滑鼠互動音效）
-        setIsInLiquidPhase(['liquid', 'teardrop', 'bounce', 'glass', 'rgbGlow'].includes(currentStage))
+        s.setIsInLiquidPhase(['liquid', 'teardrop', 'bounce', 'glass', 'rgbGlow'].includes(currentStage))
 
         // ===== AUDIO VISUALIZER BGM: 三層音頻區背景音樂 =====
         const isInAudioVisStage = ['theaterSpace', 'audioSim', 'visualSim'].includes(currentStage)
@@ -139,7 +140,7 @@ export default function CyberpunkOverlay() {
         // 檢查是否應該開始播放（在 theaterSpace 50% 進度後）
         let shouldPlay = false
         if (currentStage === 'theaterSpace') {
-            const stage = scrollConfig.stages.find(s => s.name === 'theaterSpace')
+            const stage = scrollConfig.stages.find(st => st.name === 'theaterSpace')
             if (stage && stage.scroll) {
                 const [start, end] = stage.scroll
                 const stageProgress = (rawProgress - start) / (end - start)
@@ -152,7 +153,7 @@ export default function CyberpunkOverlay() {
         // 檢查是否應該提前淡出（在 visualSim 80% 進度時）
         let shouldFadeOut = false
         if (currentStage === 'visualSim') {
-            const stage = scrollConfig.stages.find(s => s.name === 'visualSim')
+            const stage = scrollConfig.stages.find(st => st.name === 'visualSim')
             if (stage && stage.scroll) {
                 const [start, end] = stage.scroll
                 const stageProgress = (rawProgress - start) / (end - start)
@@ -184,16 +185,16 @@ export default function CyberpunkOverlay() {
                 targetOpacity = 1 - fadeProgress;
             }
 
-            setBgOpacity(targetOpacity);
+            s.setBgOpacity(targetOpacity);
         } else {
-            setBgOpacity(0)
+            s.setBgOpacity(0)
         }
 
         // Show Lock Screen UI - DELAYED (Wait for VR effects to finish)
         // Only trigger lock if user is actually IN descent stage (not jumping past it)
         // Check: currentStage is descent AND not yet initialized AND not in later stages
-        if (currentStage === 'descent' && !isInitialized) {
-            const stage = scrollConfig.stages.find(s => s.name === 'descent')
+        if (currentStage === 'descent' && !s.isInitialized) {
+            const stage = scrollConfig.stages.find(st => st.name === 'descent')
             if (stage && stage.scroll) {
                 const [start, end] = stage.scroll
                 const stageProgress = (rawProgress - start) / (end - start)
@@ -201,17 +202,17 @@ export default function CyberpunkOverlay() {
                 // Trigger around scroll value 5.0 (descent starts at 4.4, length 1.5)
                 // Only lock if we are within descent range (not jumping past)
                 if (stageProgress > 0.4 && stageProgress < 1.0) {
-                    setUiVisible(true)
+                    s.setUiVisible(true)
                     setLocked(true)
                 } else {
-                    setUiVisible(false)
+                    s.setUiVisible(false)
                     // Don't unlock here - let navbar or INITIALIZE handle it
                 }
             }
         } else {
-            setUiVisible(false)
+            s.setUiVisible(false)
             // Only unlock if we've moved past descent naturally and haven't initialized
-            if (!isInitialized && currentStage !== 'cyberpunkEntry' && currentStage !== 'descent') {
+            if (!s.isInitialized && currentStage !== 'cyberpunkEntry' && currentStage !== 'descent') {
                 setLocked(false)
             }
         }
@@ -219,15 +220,15 @@ export default function CyberpunkOverlay() {
         // ===== PORTAL EXIT: 穿出隧道變星際時播放音效 =====
         // 在 portal 階段的尾端觸發（約 95% 進度）
         if (currentStage === 'portal') {
-            const stage = scrollConfig.stages.find(s => s.name === 'portal')
+            const stage = scrollConfig.stages.find(st => st.name === 'portal')
             if (stage && stage.scroll) {
                 const [start, end] = stage.scroll
                 const stageProgress = (rawProgress - start) / (end - start)
                 // 當 portal 進度超過 98% 時觸發
-                if (stageProgress > 0.98 && !portalExitSoundPlayed) {
+                if (stageProgress > 0.98 && !s.portalExitSoundPlayed) {
                     console.log('🔊 Playing portalExit sound!')
                     playSound('portalExit')
-                    setPortalExitSoundPlayed(true)
+                    s.setPortalExitSoundPlayed(true)
                 }
             }
         }
@@ -236,7 +237,7 @@ export default function CyberpunkOverlay() {
         if (currentStage === 'featureShowcase') {
 
             // Get the stage bounds from scrollConfig
-            const stage = scrollConfig.stages.find(s => s.name === 'featureShowcase')
+            const stage = scrollConfig.stages.find(st => st.name === 'featureShowcase')
             if (stage && stage.scroll) {
                 const [start, end] = stage.scroll
                 const stageProgress = (rawProgress - start) / (end - start)
@@ -252,14 +253,14 @@ export default function CyberpunkOverlay() {
                     visible: visibility.visible
                 })
 
-                setActiveFeature(visibility.feature)
-                setCalloutVisible(visibility.visible)
-                setCalloutPhase(visibility.phase)
+                s.setActiveFeature(visibility.feature)
+                s.setCalloutVisible(visibility.visible)
+                s.setCalloutPhase(visibility.phase)
             }
         } else {
-            setActiveFeature(null)
-            setCalloutVisible(false)
-            setCalloutPhase('hidden')
+            s.setActiveFeature(null)
+            s.setCalloutVisible(false)
+            s.setCalloutPhase('hidden')
         }
 
         // ===== VIBE TEXT: Show slogans with scroll-based timing =====
@@ -267,69 +268,69 @@ export default function CyberpunkOverlay() {
 
         // "Enjoy the Vibe" - audio waveforms phase
         if (latest >= 6.5 && latest < 7.8) {
-            setVibeTextVisible(true)
-            setVibeText('Enjoy the Vibe')
+            s.setVibeTextVisible(true)
+            s.setVibeText('Enjoy the Vibe')
         }
         // "Explore the Universe" - sphere phase
         else if (latest >= 8.2 && latest < 8.9) {
-            setVibeTextVisible(true)
-            setVibeText('Explore the Universe')
+            s.setVibeTextVisible(true)
+            s.setVibeText('Explore the Universe')
         }
         // "Immerse Yourself" - tunnel phase
         else if (latest >= 9.2 && currentStage === 'portal') {
-            setVibeTextVisible(true)
-            setVibeText('Immerse Yourself')
+            s.setVibeTextVisible(true)
+            s.setVibeText('Immerse Yourself')
             // 進入隧道時播放 portal 音效（只播放一次）
-            if (!portalSoundPlayed) {
+            if (!s.portalSoundPlayed) {
                 playSound('portal')
-                setPortalSoundPlayed(true)
+                s.setPortalSoundPlayed(true)
             }
         }
         else {
-            setVibeTextVisible(false)
+            s.setVibeTextVisible(false)
             // 離開 portal 階段時重設，讓下次進入可以再播放
             if (currentStage !== 'portal') {
-                setPortalSoundPlayed(false)
+                s.setPortalSoundPlayed(false)
             }
             // 離開 portal 階段時重設 portalExit 音效
             if (currentStage !== 'portal') {
-                setPortalExitSoundPlayed(false)
+                s.setPortalExitSoundPlayed(false)
             }
         }
 
         // ===== INTRO NARRATIVE: Layered text during liquid phase =====
         // Layer 1: Brand (visible at start, fades out early)
-        setShowIntroBrand(latest < 0.6)
+        s.setShowIntroBrand(latest < 0.6)
 
         // Layer 2: Philosophy (fades in after brand fades, holds, then fades out)
-        setShowIntroPhilosophy(latest >= 0.8 && latest < 1.8)
+        s.setShowIntroPhilosophy(latest >= 0.8 && latest < 1.8)
 
         // Layer 3: Intro prompts - hide when user scrolls past liquid phase
-        if (latest >= 0.8 && introPhase !== 'done') {
-            setIntroPhase('done')
+        if (latest >= 0.8 && s.introPhase !== 'done') {
+            s.setIntroPhase('done')
         }
 
         // ===== FINAL LANDING: Reset projection state when leaving =====
         // 離開 holographicProjection 時重設狀態（為下次使用 navbar 跳轉做準備）
         if (currentStage !== 'holographicProjection' && currentStage !== 'finalLanding') {
             resetProjection()
-            setProjectionComplete(false)
-            setShowFinalPrompt(false)
+            s.setProjectionComplete(false)
+            s.setShowFinalPrompt(false)
         }
 
         // Phase 2: Show card when user enters finalLanding stage
         // 同時隱藏滾動提示
         if (currentStage === 'finalLanding') {
-            setShowFinalPrompt(false)  // 繼續滾動後隱藏提示
-            setShowFinalCard(true)
+            s.setShowFinalPrompt(false)  // 繼續滾動後隱藏提示
+            s.setShowFinalCard(true)
         } else {
-            setShowFinalCard(false)
+            s.setShowFinalCard(false)
         }
     })
 
     const handleInitialize = () => {
         playSound('initialize')  // Play system boot sound
-        setIsInitialized(true)
+        ui.getState().setInitialized(true)
         resetRotation() // Reset VR rotation before unlocking
         setLocked(false)
     }
@@ -401,10 +402,10 @@ export default function CyberpunkOverlay() {
                             transition={{ duration: 0.5 }}
                             className="absolute bottom-12 sm:bottom-16 lg:bottom-12 lg:right-12 flex flex-col items-center lg:items-end gap-3 sm:gap-4 cursor-pointer"
                             onClick={() => {
-                                if (introPhase === 'tap') setIntroPhase('move')
+                                if (introPhase === 'tap') ui.getState().setIntroPhase('move')
                             }}
                             onMouseMove={() => {
-                                if (introPhase === 'move') setIntroPhase('scroll')
+                                if (introPhase === 'move') ui.getState().setIntroPhase('scroll')
                             }}
                         >
                             {introPhase === 'tap' && (

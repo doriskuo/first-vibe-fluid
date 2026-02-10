@@ -5,11 +5,10 @@ import { useFrame } from '@react-three/fiber'
 import { MeshTransmissionMaterial } from '@react-three/drei'
 import * as THREE from 'three'
 import { useScrollAnimation } from '@/hooks/useScrollAnimation'
+import { useVRStore } from '@/stores/vrStore'
 
 interface VRHeadphonesProps {
-    visible: boolean
     parentRotation: THREE.Euler
-    opacity: number
 }
 
 /**
@@ -19,7 +18,9 @@ interface VRHeadphonesProps {
  * 內側表面：平面
  * 側面輪廓：八角形
  */
-export default function VRHeadphones({ visible, parentRotation, opacity }: VRHeadphonesProps) {
+export default function VRHeadphones({ parentRotation }: VRHeadphonesProps) {
+    const visible = useVRStore(s => s.headphonesVisible)
+    const opacity = useVRStore(s => s.headphonesOpacity)
     const groupRef = useRef<THREE.Group>(null)
     const leftMatRef = useRef<any>(null)
     const rightMatRef = useRef<any>(null)

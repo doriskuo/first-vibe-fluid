@@ -162,11 +162,9 @@ export default function CyberpunkOverlay() {
         }
 
         if (shouldPlay && !shouldFadeOut && !audioVisBgmPlayingRef.current) {
-            console.log('🎵 Playing audioVisBgm!')
             playAudioVisBgm()
             audioVisBgmPlayingRef.current = true
         } else if ((!shouldPlay || shouldFadeOut) && audioVisBgmPlayingRef.current) {
-            console.log('🎵 Stopping audioVisBgm!')
             stopAudioVisBgm()
             audioVisBgmPlayingRef.current = false
         }
@@ -226,7 +224,6 @@ export default function CyberpunkOverlay() {
                 const stageProgress = (rawProgress - start) / (end - start)
                 // 當 portal 進度超過 98% 時觸發
                 if (stageProgress > 0.98 && !s.portalExitSoundPlayed) {
-                    console.log('🔊 Playing portalExit sound!')
                     playSound('portalExit')
                     s.setPortalExitSoundPlayed(true)
                 }
@@ -246,12 +243,6 @@ export default function CyberpunkOverlay() {
                 // 使用新的 visibility 函數來控制說明框顯示
                 const visibility = getCalloutVisibility(morphProgress)
 
-                console.log('FeatureMorph:', {
-                    morphProgress,
-                    feature: visibility.feature?.id,
-                    phase: visibility.phase,
-                    visible: visibility.visible
-                })
 
                 s.setActiveFeature(visibility.feature)
                 s.setCalloutVisible(visibility.visible)

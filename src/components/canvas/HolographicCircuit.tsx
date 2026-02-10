@@ -153,7 +153,6 @@ export default function HolographicCircuit({
 
     if (!visible) return null
 
-    console.log('HolographicCircuit RENDERING, opacity:', opacity, 'growth:', growth)
 
     return (
         <mesh
